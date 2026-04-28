@@ -1,0 +1,31 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:PharmacySystem.Desktop.ViewModels"
+        x:Class="PharmacySystem.Desktop.Views.LicenseActivationView"
+        Title="Software Activation - Pharmacy System" Height="350" Width="550"
+        WindowStartupLocation="CenterScreen" CanResize="False" Background="#F8FAFC">
+    
+    <Window.DataContext>
+        <vm:LicenseActivationViewModel/>
+    </Window.DataContext>
+
+    <Border Padding="30" CornerRadius="10">
+        <StackPanel Spacing="15" VerticalAlignment="Center">
+            <TextBlock Text="Product Activation Required" FontSize="22" FontWeight="Bold" Foreground="#1E293B" HorizontalAlignment="Center"/>
+            
+            <TextBlock Text="{Binding StatusMessage}" FontSize="14" Foreground="#EF4444" FontWeight="SemiBold" HorizontalAlignment="Center" TextWrapping="Wrap"/>
+            
+            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" Margin="0,15">
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="Your Hardware ID:" VerticalAlignment="Center" FontWeight="Bold" Foreground="#64748B" Margin="0,0,10,15"/>
+                <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding HardwareId}" IsReadOnly="True" Background="#E2E8F0" Foreground="#0F172A" FontSize="16" FontWeight="Heavy" Margin="0,0,0,15"/>
+                
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="Activation Key:" VerticalAlignment="Center" FontWeight="Bold" Foreground="#64748B" Margin="0,0,10,0"/>
+                <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding ActivationKey}" Watermark="Enter license key here" FontSize="14"/>
+            </Grid>
+
+            <TextBlock Text="To purchase a key, send your Hardware ID to support@pharmacysystem.com" FontSize="12" Foreground="#94A3B8" HorizontalAlignment="Center" Margin="0,0,0,10"/>
+            
+            <Button Content="ACTIVATE LICENSE" Command="{Binding ActivateCommand}" Background="#10B981" Foreground="White" FontWeight="Bold" FontSize="16" Height="45" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"/>
+        </StackPanel>
+    </Border>
+</Window>

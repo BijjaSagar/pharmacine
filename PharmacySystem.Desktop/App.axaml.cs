@@ -16,7 +16,15 @@ namespace PharmacySystem.Desktop
         {
             if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             {
-                desktop.MainWindow = new LoginView();
+                var status = PharmacySystem.Desktop.Services.LicenseService.CheckLicense();
+                if (status.IsValid)
+                {
+                    desktop.MainWindow = new LoginView();
+                }
+                else
+                {
+                    desktop.MainWindow = new LicenseActivationView();
+                }
             }
 
             base.OnFrameworkInitializationCompleted();
