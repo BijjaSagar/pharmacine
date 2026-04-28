@@ -27,7 +27,7 @@
                 <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center"
                             VerticalAlignment="Center" Spacing="18">
                     <TextBlock Text="F2 = Search" Foreground="#94A3B8" FontSize="12"/>
-                    <TextBlock Text="F5 = Checkout" Foreground="#94A3B8" FontSize="12"/>
+                    <TextBlock Text="F3 = Quick Add  |  F5 = Checkout  |  F9 = Find Substitute" Foreground="#94A3B8" FontSize="12"/>
                     <TextBlock Text="F8 = Cancel Bill" Foreground="#94A3B8" FontSize="12"/>
                     <TextBlock Text="Ctrl+1…0 = Switch Console" Foreground="#94A3B8" FontSize="12"/>
                     <TextBlock Text="Enter = Add Item" Foreground="#94A3B8" FontSize="12"/>
@@ -112,10 +112,17 @@
                                      Background="#F8FAFC" BorderBrush="#CBD5E1"/>
                         </StackPanel>
                         <StackPanel Grid.Column="3">
+                            <TextBlock Text="🏠  Patient Address (H1)" FontSize="11" Foreground="#64748B" FontWeight="SemiBold"/>
+                            <TextBox Text="{Binding ActiveConsole.PatientAddress}"
+                                     Watermark="Req. for Sch. H1"
+                                     FontSize="14" Height="34"
+                                     Background="#F8FAFC" BorderBrush="#CBD5E1"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="4" Margin="8,0,0,0">
                             <TextBlock Text="🏷  Discount %" FontSize="11" Foreground="#64748B" FontWeight="SemiBold"/>
                             <NumericUpDown Value="{Binding ActiveConsole.DiscountPercent}"
                                           Minimum="0" Maximum="100"
-                                          Width="100" Height="34" FontSize="14"/>
+                                          Width="80" Height="34" FontSize="14"/>
                         </StackPanel>
                     </Grid>
                 </Border>
@@ -127,7 +134,7 @@
                         <TextBox x:Name="SearchBox"
                                  Grid.Column="0"
                                  Text="{Binding SearchInput}"
-                                 Watermark="🔍  Type medicine name or barcode… (F2 to focus)"
+                                 Watermark="🔍  Type name… (F2) or F9 for Substitutes"
                                  FontSize="15" Background="Transparent" BorderThickness="0"
                                  Padding="14,10"
                                  KeyDown="SearchBox_KeyDown"/>
@@ -171,8 +178,14 @@
                                     <Border Padding="10,8" BorderBrush="#E2E8F0" BorderThickness="0,0,0,1">
                                         <Grid ColumnDefinitions="*,Auto,Auto">
                                             <StackPanel Grid.Column="0">
-                                                <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="SemiBold" Foreground="#0F172A"/>
-                                                <TextBlock Text="{Binding Category}" FontSize="11" Foreground="#64748B"/>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="SemiBold" Foreground="#0F172A"/>
+                                                    <Border IsVisible="{Binding IsScheduleH1}" Background="#EF4444" CornerRadius="4" Padding="4,2" Margin="6,0,0,0">
+                                                        <TextBlock Text="H1" FontSize="9" FontWeight="Bold" Foreground="White"/>
+                                                    </Border>
+                                                </StackPanel>
+                                                <TextBlock Text="{Binding GenericName}" FontSize="11" Foreground="#64748B"/>
+                                                <TextBlock Text="{Binding Category}" FontSize="11" Foreground="#94A3B8"/>
                                             </StackPanel>
                                             <StackPanel Grid.Column="1" Margin="20,0" HorizontalAlignment="Right">
                                                 <TextBlock Text="{Binding PriceDisplay}" FontSize="14" FontWeight="Bold" Foreground="#10B981"/>
@@ -298,6 +311,12 @@
                             <TextBlock Grid.Column="1"
                                        Text="{Binding ActiveConsole.ItemCount}"
                                        Foreground="#94A3B8" FontSize="13"/>
+                        </Grid>
+                        
+                        <Separator Background="#E2E8F0" Margin="0,4"/>
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Text="Payment Mode:" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            <ComboBox Grid.Column="1" Width="100" SelectedItem="{Binding ActiveConsole.PaymentMode}" ItemsSource="{Binding ActiveConsole.PaymentModes}" />
                         </Grid>
                     </StackPanel>
 

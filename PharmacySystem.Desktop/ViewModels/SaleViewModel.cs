@@ -19,6 +19,7 @@ namespace PharmacySystem.Desktop.ViewModels
         public int BatchId { get; set; }
         public string BatchNumber { get; set; } = string.Empty;
         public decimal StockAvailable { get; set; }
+        public bool IsScheduleH1 => Product.IsScheduleH1;
 
         private decimal _quantity = 1;
         public decimal Quantity
@@ -43,8 +44,10 @@ namespace PharmacySystem.Desktop.ViewModels
     {
         public int ProductId { get; set; }
         public string Name { get; set; } = string.Empty;
+        public string GenericName { get; set; } = string.Empty;
         public string Barcode { get; set; } = string.Empty;
         public string Category { get; set; } = string.Empty;
+        public bool IsScheduleH1 { get; set; }
         public decimal Mrp { get; set; }
         public int BatchId { get; set; }
         public string BatchNumber { get; set; } = string.Empty;
@@ -71,6 +74,13 @@ namespace PharmacySystem.Desktop.ViewModels
 
         private string _customerPhone = string.Empty;
         public string CustomerPhone { get => _customerPhone; set => SetProperty(ref _customerPhone, value); }
+
+        private string _patientAddress = string.Empty;
+        public string PatientAddress { get => _patientAddress; set => SetProperty(ref _patientAddress, value); }
+
+        private string _paymentMode = "Cash";
+        public string PaymentMode { get => _paymentMode; set => SetProperty(ref _paymentMode, value); }
+        public ObservableCollection<string> PaymentModes { get; } = new() { "Cash", "Card", "UPI", "Credit" };
 
         public ObservableCollection<CartItem> CartItems { get; set; } = new();
 
@@ -120,6 +130,8 @@ namespace PharmacySystem.Desktop.ViewModels
             CustomerName = string.Empty;
             DoctorName = string.Empty;
             CustomerPhone = string.Empty;
+            PatientAddress = string.Empty;
+            PaymentMode = "Cash";
             DiscountPercent = 0;
             RecalcTotals();
         }
@@ -201,6 +213,7 @@ namespace PharmacySystem.Desktop.ViewModels
         public ICommand CancelBillCommand { get; }
         public ICommand SearchCommand { get; }
         public ICommand ClearSearchCommand { get; }
+        public ICommand SubstituteSearchCommand { get; }
 
         public SaleViewModel()
         {
@@ -230,7 +243,8 @@ namespace PharmacySystem.Desktop.ViewModels
 
             CheckoutCommand = new RelayCommand(async _ => await CheckoutAsync());
             CancelBillCommand = new RelayCommand(_ => ActiveConsole.Clear());
-            SearchCommand = new RelayCommand(async _ => await SearchProductsAsync());
+            SearchCommand = new RelayCommand(async _ => await SearchProductsAsync(false));
+            SubstituteSearchCommand = new RelayCommand(async _ => await SearchProductsAsync(true));
             ClearSearchCommand = new RelayCommand(_ =>
             {
                 SearchInput = string.Empty;
@@ -239,7 +253,7 @@ namespace PharmacySystem.Desktop.ViewModels
             });
         }
 
-        private async Task SearchProductsAsync()
+        private async Task SearchProductsAsync(bool substituteSearch = false)
         {
             if (string.IsNullOrWhiteSpace(SearchInput) || SearchInput.Length < 2)
             {
@@ -252,7 +266,7 @@ namespace PharmacySystem.Desktop.ViewModels
             {
                 // Search by name OR barcode; show stock and nearest expiry batch
                 var sql = @"
-                    SELECT p.product_id, p.name, p.barcode, p.category, p.mrp,
+                    SELECT p.product_id, p.name, p.generic_name, p.barcode, p.category, p.mrp, p.is_schedule_h1,
                            b.batch_id, b.batch_number, b.quantity, b.expiry_date
                     FROM products p
                     LEFT JOIN LATERAL (
@@ -262,12 +276,13 @@ namespace PharmacySystem.Desktop.ViewModels
                         ORDER BY expiry_date ASC LIMIT 1
                     ) b ON true
                     WHERE p.is_active = true
-                      AND (p.name ILIKE @q OR p.barcode ILIKE @q OR p.category ILIKE @q)
-                    ORDER BY p.name
+                      AND (p.name ILIKE @q OR p.barcode ILIKE @q OR p.category ILIKE @q OR (p.generic_name ILIKE @q AND @isSub = true))
+                    ORDER BY (p.mrp - p.unit_price) DESC, p.name
                     LIMIT 20";
 
                 var dt = await _dbService.ExecuteQueryAsync(sql,
-                    new NpgsqlParameter("@q", $"%{SearchInput}%"));
+                    new NpgsqlParameter("@q", $"%{SearchInput}%"),
+                    new NpgsqlParameter("@isSub", substituteSearch));
 
                 SearchResults.Clear();
                 foreach (System.Data.DataRow row in dt.Rows)
@@ -276,8 +291,10 @@ namespace PharmacySystem.Desktop.ViewModels
                     {
                         ProductId = Convert.ToInt32(row["product_id"]),
                         Name = row["name"].ToString() ?? "",
+                        GenericName = row["generic_name"].ToString() ?? "",
                         Barcode = row["barcode"].ToString() ?? "",
                         Category = row["category"].ToString() ?? "",
+                        IsScheduleH1 = row["is_schedule_h1"] != DBNull.Value && Convert.ToBoolean(row["is_schedule_h1"]),
                         Mrp = row["mrp"] != DBNull.Value ? Convert.ToDecimal(row["mrp"]) : 0,
                         BatchId = row["batch_id"] != DBNull.Value ? Convert.ToInt32(row["batch_id"]) : 0,
                         BatchNumber = row["batch_number"]?.ToString() ?? "N/A",
@@ -321,7 +338,8 @@ namespace PharmacySystem.Desktop.ViewModels
                     Barcode = row["barcode"].ToString() ?? "",
                     Name = row["name"].ToString() ?? "",
                     UnitPrice = row["unit_price"] != DBNull.Value ? Convert.ToDecimal(row["unit_price"]) : SelectedSearchResult.Mrp,
-                    GstPercent = row["gst_percent"] != DBNull.Value ? Convert.ToDecimal(row["gst_percent"]) : 0
+                    GstPercent = row["gst_percent"] != DBNull.Value ? Convert.ToDecimal(row["gst_percent"]) : 0,
+                    IsScheduleH1 = row["is_schedule_h1"] != DBNull.Value && Convert.ToBoolean(row["is_schedule_h1"])
                 };
 
                 // ── 2. FIFO ENFORCEMENT ──────────────────────────────────────────
@@ -401,23 +419,66 @@ namespace PharmacySystem.Desktop.ViewModels
             IsBusy = true;
             try
             {
+                // ── SCHEDULE H1 COMPLIANCE ──
+                if (console.CartItems.Any(c => c.IsScheduleH1))
+                {
+                    if (string.IsNullOrWhiteSpace(console.DoctorName) || string.IsNullOrWhiteSpace(console.PatientAddress))
+                    {
+                        StatusMessage = "🚨 Schedule H1 Alert: Doctor Name and Patient Address are REQUIRED!";
+                        IsBusy = false;
+                        return;
+                    }
+                }
+
+                int? customerId = null;
+
+                // ── KHATA (CREDIT) LOGIC ──
+                if (console.PaymentMode == "Credit")
+                {
+                    if (string.IsNullOrWhiteSpace(console.CustomerPhone) || string.IsNullOrWhiteSpace(console.CustomerName))
+                    {
+                        StatusMessage = "🚨 Credit Alert: Customer Name and Phone are REQUIRED for Khata!";
+                        IsBusy = false;
+                        return;
+                    }
+
+                    // Upsert Customer
+                    string custSql = @"
+                        INSERT INTO customers (name, mobile, address, outstanding_balance)
+                        VALUES (@name, @phone, @addr, @bal)
+                        ON CONFLICT (mobile) DO UPDATE SET 
+                            outstanding_balance = customers.outstanding_balance + @bal,
+                            name = @name
+                        RETURNING customer_id";
+                    var cidObj = await _dbService.ExecuteScalarAsync(custSql,
+                        new NpgsqlParameter("@name", console.CustomerName),
+                        new NpgsqlParameter("@phone", console.CustomerPhone),
+                        new NpgsqlParameter("@addr", string.IsNullOrWhiteSpace(console.PatientAddress) ? DBNull.Value : console.PatientAddress),
+                        new NpgsqlParameter("@bal", console.GrandTotal));
+                    
+                    customerId = Convert.ToInt32(cidObj);
+                }
+
                 string invoiceNo = $"INV-C{console.ConsoleNumber}-{DateTime.Now:yyMMddHHmmss}";
 
                 string saleSql = @"INSERT INTO sales 
-                    (invoice_number, customer_name, customer_phone, doctor_name, 
-                     subtotal, total_gst, discount_amount, total_amount, payment_mode, user_id) 
-                    VALUES (@inv, @cust, @phone, @doc, @sub, @gst, @disc, @grand, 'Cash', @uid) 
+                    (invoice_no, customer_id, customer_name, customer_phone, doctor_name, patient_address,
+                     subtotal, taxable_amount, total_gst, cgst, sgst, discount_amount, grand_total, total_amount, payment_mode, user_id) 
+                    VALUES (@inv, @cid, @cust, @phone, @doc, @addr, @sub, @sub, @gst, @gst/2, @gst/2, @disc, @grand, @grand, @pmode, @uid) 
                     RETURNING sale_id";
 
                 var saleIdObj = await _dbService.ExecuteScalarAsync(saleSql,
                     new NpgsqlParameter("@inv", invoiceNo),
+                    new NpgsqlParameter("@cid", (object?)customerId ?? DBNull.Value),
                     new NpgsqlParameter("@cust", string.IsNullOrEmpty(console.CustomerName) ? "Walk-in" : console.CustomerName),
                     new NpgsqlParameter("@phone", (object?)console.CustomerPhone ?? DBNull.Value),
                     new NpgsqlParameter("@doc", (object?)console.DoctorName ?? DBNull.Value),
+                    new NpgsqlParameter("@addr", (object?)console.PatientAddress ?? DBNull.Value),
                     new NpgsqlParameter("@sub", console.SubTotal),
                     new NpgsqlParameter("@gst", console.TotalGst),
                     new NpgsqlParameter("@disc", console.DiscountAmount),
                     new NpgsqlParameter("@grand", console.GrandTotal),
+                    new NpgsqlParameter("@pmode", console.PaymentMode),
                     new NpgsqlParameter("@uid", AppSession.UserId));
 
                 int saleId = Convert.ToInt32(saleIdObj);

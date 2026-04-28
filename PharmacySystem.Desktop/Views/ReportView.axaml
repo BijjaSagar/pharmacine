@@ -79,6 +79,15 @@
                             Background="#F59E0B" Foreground="White" FontWeight="Bold" Margin="0,10,0,0" HorizontalAlignment="Right"/>
                 </Grid>
             </TabItem>
+        <!-- Schedule H1 Register -->
+            <TabItem Header="Schedule H1 Register">
+                <Grid RowDefinitions="*,Auto">
+                    <TextBlock Grid.Row="0" Text="Schedule H1 data is exported directly to CSV for compliance." 
+                               HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="16" Foreground="#64748B"/>
+                    <Button Grid.Row="1" Content="Export H1 Register to CSV" Command="{Binding ExportCommand}" CommandParameter="H1" 
+                            Background="#EF4444" Foreground="White" FontWeight="Bold" Margin="0,10,0,0" HorizontalAlignment="Right"/>
+                </Grid>
+            </TabItem>
         </TabControl>
 
         <!-- Footer -->

@@ -41,6 +41,15 @@ namespace PharmacySystem.Desktop.Views
                 return;
             }
 
+            // F9 — substitute search
+            if (e.Key == Key.F9)
+            {
+                if (vm.SubstituteSearchCommand.CanExecute(null))
+                    vm.SubstituteSearchCommand.Execute(null);
+                e.Handled = true;
+                return;
+            }
+
             // F8 — cancel bill
             if (e.Key == Key.F8)
             {
@@ -98,6 +107,12 @@ namespace PharmacySystem.Desktop.Views
             {
                 if (vm.AddToCartCommand.CanExecute(null))
                     vm.AddToCartCommand.Execute(null);
+                e.Handled = true;
+            }
+            else if (e.Key == Key.F9)
+            {
+                if (vm.SubstituteSearchCommand.CanExecute(null))
+                    vm.SubstituteSearchCommand.Execute(null);
                 e.Handled = true;
             }
             else if (e.Key == Key.Down)

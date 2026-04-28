@@ -178,7 +178,39 @@ namespace PharmacySystem.Desktop.ViewModels
 
             try
             {
-                if (type == "Sales")
+                if (type == "H1")
+                {
+                    StatusMessage = "Generating Schedule H1 Register...";
+                    var sql = @"
+                        SELECT s.sale_date, s.invoice_no, s.customer_name, s.patient_address, s.doctor_name, 
+                               p.name as medicine, si.quantity
+                        FROM sales s
+                        JOIN sale_items si ON s.sale_id = si.sale_id
+                        JOIN batches b ON si.batch_id = b.batch_id
+                        JOIN products p ON b.product_id = p.product_id
+                        WHERE p.is_schedule_h1 = true
+                          AND s.sale_date >= @start AND s.sale_date <= @end
+                        ORDER BY s.sale_date DESC";
+                    
+                    var dt = await _dbService.ExecuteQueryAsync(sql, 
+                        new Npgsql.NpgsqlParameter("@start", StartDate.DateTime.Date),
+                        new Npgsql.NpgsqlParameter("@end", EndDate.DateTime.Date.AddDays(1).AddTicks(-1)));
+                        
+                    sb.AppendLine("Date,Invoice No,Patient Name,Patient Address,Prescribing Doctor,Medicine,Quantity");
+                    foreach (System.Data.DataRow row in dt.Rows)
+                    {
+                        var d = Convert.ToDateTime(row["sale_date"]).ToString("g");
+                        var inv = row["invoice_no"].ToString();
+                        var pName = row["customer_name"].ToString()?.Replace(",", " ");
+                        var pAddr = row["patient_address"].ToString()?.Replace(",", " ");
+                        var doc = row["doctor_name"].ToString()?.Replace(",", " ");
+                        var med = row["medicine"].ToString()?.Replace(",", " ");
+                        var qty = row["quantity"].ToString();
+                        
+                        sb.AppendLine($"{d},{inv},{pName},{pAddr},{doc},{med},{qty}");
+                    }
+                }
+                else if (type == "Sales")
                 {
                     sb.AppendLine("Date,Invoice No,Customer Name,Total Amount,Payment Mode");
                     foreach (var item in SalesReport)
