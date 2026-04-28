@@ -130,7 +130,7 @@
                 <!-- Search Bar -->
                 <Border Grid.Row="1" Background="White" CornerRadius="8"
                         BorderBrush="#3B82F6" BorderThickness="2" Margin="0,0,0,6">
-                    <Grid ColumnDefinitions="*,Auto,Auto">
+                    <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto">
                         <TextBox x:Name="SearchBox"
                                  Grid.Column="0"
                                  Text="{Binding SearchInput}"
@@ -335,6 +335,18 @@
                                     <NumericUpDown Grid.Column="1" Value="{Binding ActiveConsole.SupplyDays}" Minimum="1" Maximum="180" Width="90" Height="25" FontSize="12"/>
                                 </Grid>
                                 <CheckBox IsChecked="{Binding ActiveConsole.SendWhatsAppReceipt}" Content="Send WhatsApp Receipt" FontSize="13" Foreground="#15803D" FontWeight="SemiBold"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- AI Co-Pilot -->
+                        <Border Background="#F4F4F5" CornerRadius="6" Padding="10" BorderBrush="#E4E4E7" BorderThickness="1">
+                            <StackPanel Spacing="6">
+                                <TextBlock Text="🤖 Pharma Co-Pilot" FontSize="14" FontWeight="Bold" Foreground="#3F3F46"/>
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBox Text="{Binding ActiveConsole.CopilotQuery}" Watermark="Ask clinical question..." FontSize="12" Height="30" Padding="8,5" Background="White" CornerRadius="4,0,0,4"/>
+                                    <Button Grid.Column="1" Command="{Binding AskCopilotCommand}" Content="Ask" Background="#8B5CF6" Foreground="White" FontSize="12" FontWeight="Bold" Padding="12,5" CornerRadius="0,4,4,0" Cursor="Hand"/>
+                                </Grid>
+                                <TextBlock Text="{Binding ActiveConsole.CopilotResponse}" IsVisible="{Binding ActiveConsole.CopilotResponse, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" TextWrapping="Wrap" FontSize="11" Foreground="#4F46E5" Margin="0,4,0,0"/>
                             </StackPanel>
                         </Border>
                     </StackPanel>

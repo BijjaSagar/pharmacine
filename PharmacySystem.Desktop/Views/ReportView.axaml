@@ -88,6 +88,19 @@
                             Background="#EF4444" Foreground="White" FontWeight="Bold" Margin="0,10,0,0" HorizontalAlignment="Right"/>
                 </Grid>
             </TabItem>
+
+            <!-- AI Patient Churn -->
+            <TabItem Header="AI Patient Churn">
+                <Grid RowDefinitions="Auto,*">
+                    <Button Grid.Row="0" Content="🧠 Analyze Churn &amp; Generate Retention Messages" Command="{Binding AnalyzeChurnCommand}"
+                            Background="#8B5CF6" Foreground="White" FontWeight="Bold" Margin="0,0,0,10" HorizontalAlignment="Left" Padding="20,10"/>
+                    <Border Grid.Row="1" Background="#F8FAFC" CornerRadius="5" Padding="15" BorderBrush="#E2E8F0" BorderThickness="1">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <TextBlock Text="{Binding AiChurnMessage}" TextWrapping="Wrap" FontSize="14" Foreground="#1E293B" LineHeight="24"/>
+                        </ScrollViewer>
+                    </Border>
+                </Grid>
+            </TabItem>
         </TabControl>
 
         <!-- Footer -->

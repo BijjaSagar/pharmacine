@@ -53,6 +53,7 @@ namespace PharmacySystem.Desktop.ViewModels
     public class InventoryAlertViewModel : ViewModelBase
     {
         private readonly DatabaseService _db;
+        private readonly AiService _ai;
 
         // Collections
         public ObservableCollection<StockAlertItem>  LowStockItems  { get; } = new();
@@ -98,22 +99,44 @@ namespace PharmacySystem.Desktop.ViewModels
         private string _lastRefreshed = "Never";
         public string LastRefreshed { get => _lastRefreshed; set => SetProperty(ref _lastRefreshed, value); }
 
+        private string _aiPrediction = string.Empty;
+        public string AiPrediction { get => _aiPrediction; set => SetProperty(ref _aiPrediction, value); }
+
         public ICommand RefreshCommand { get; }
         public ICommand Set15DaysCommand { get; }
         public ICommand Set30DaysCommand { get; }
         public ICommand Set60DaysCommand { get; }
         public ICommand GeneratePoCommand { get; }
+        public ICommand AiPredictRestockCommand { get; }
 
         public InventoryAlertViewModel()
         {
             _db = new DatabaseService();
+            _ai = new AiService();
             RefreshCommand    = new RelayCommand(async _ => await LoadAllAsync());
             Set15DaysCommand  = new RelayCommand(_ => ExpiryDays = 15);
             Set30DaysCommand  = new RelayCommand(_ => ExpiryDays = 30);
             Set60DaysCommand  = new RelayCommand(_ => ExpiryDays = 60);
             GeneratePoCommand = new RelayCommand(async _ => await GeneratePurchaseOrderAsync());
+            AiPredictRestockCommand = new RelayCommand(async _ => await RunAiPredictionAsync());
             QuestPDF.Settings.License = LicenseType.Community;
             _ = LoadAllAsync();
+        }
+
+        private async Task RunAiPredictionAsync()
+        {
+            if (!_ai.IsConfigured) { AiPrediction = "AI Key not configured."; return; }
+            IsBusy = true;
+            AiPrediction = "AI is analyzing last 30 days of sales...";
+            try {
+                var sql = @"SELECT p.name, sum(si.quantity) as sold FROM sale_items si JOIN sales s ON s.sale_id = si.sale_id JOIN batches b ON b.batch_id = si.batch_id JOIN products p ON p.product_id = b.product_id WHERE s.sale_date > current_date - interval '30 days' GROUP BY p.name ORDER BY sold DESC LIMIT 20";
+                var dt = await _db.ExecuteQueryAsync(sql);
+                var sales = new System.Collections.Generic.List<string>();
+                foreach (System.Data.DataRow r in dt.Rows) sales.Add($"{r["name"]}: {r["sold"]}");
+                
+                AiPrediction = await _ai.PredictRestockingAsync(string.Join(", ", sales));
+            } catch (Exception ex) { AiPrediction = "AI Error: " + ex.Message; }
+            finally { IsBusy = false; }
         }
 
         // ── Master refresh ────────────────────────────────────────────────

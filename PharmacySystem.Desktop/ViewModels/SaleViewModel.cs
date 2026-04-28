@@ -67,6 +67,15 @@ namespace PharmacySystem.Desktop.ViewModels
         public string Header => $"Console {ConsoleNumber}";
         public string ShortcutHint => $"Ctrl+{ConsoleNumber}";
 
+        private string _substituteName = string.Empty;
+        public string SubstituteName { get => _substituteName; set => SetProperty(ref _substituteName, value); }
+
+        private string _copilotQuery = string.Empty;
+        public string CopilotQuery { get => _copilotQuery; set => SetProperty(ref _copilotQuery, value); }
+
+        private string _copilotResponse = string.Empty;
+        public string CopilotResponse { get => _copilotResponse; set => SetProperty(ref _copilotResponse, value); }
+
         private string _customerName = string.Empty;
         public string CustomerName { get => _customerName; set => SetProperty(ref _customerName, value); }
 
@@ -156,6 +165,7 @@ namespace PharmacySystem.Desktop.ViewModels
     public class SaleViewModel : ViewModelBase
     {
         private readonly DatabaseService _dbService;
+        private readonly AiService _aiService;
 
         // --- 10 Consoles ---
         public ObservableCollection<ConsoleState> Consoles { get; } = new();
@@ -243,6 +253,7 @@ namespace PharmacySystem.Desktop.ViewModels
         public ICommand SearchCommand { get; }
         public ICommand ClearSearchCommand { get; }
         public ICommand SubstituteSearchCommand { get; }
+        public ICommand AskCopilotCommand { get; }
 
         public ICommand ConfirmPinCommand { get; }
         public ICommand CancelPinCommand { get; }
@@ -250,6 +261,7 @@ namespace PharmacySystem.Desktop.ViewModels
         public SaleViewModel()
         {
             _dbService = new DatabaseService();
+            _aiService = new AiService();
 
             // Initialize 10 consoles
             for (int i = 1; i <= 10; i++)
@@ -290,6 +302,7 @@ namespace PharmacySystem.Desktop.ViewModels
             });
             SearchCommand = new RelayCommand(async _ => await SearchProductsAsync(false));
             SubstituteSearchCommand = new RelayCommand(async _ => await SearchProductsAsync(true));
+            AskCopilotCommand = new RelayCommand(async _ => await AskCopilotAsync());
             ClearSearchCommand = new RelayCommand(_ =>
             {
                 SearchInput = string.Empty;
@@ -477,37 +490,62 @@ namespace PharmacySystem.Desktop.ViewModels
                     }
                 }
 
-
-                var sr = SelectedSearchResult;
-                var existing = ActiveConsole.CartItems
-                    .FirstOrDefault(c => c.Product.ProductId == product.ProductId && c.BatchId == sr.BatchId);
-
+                // Add item
+                var existing = ActiveConsole.CartItems.FirstOrDefault(x => x.BatchId == SelectedSearchResult.BatchId);
                 if (existing != null)
                 {
                     existing.Quantity += AddQuantity;
                 }
                 else
                 {
-                    var newItem = new CartItem
+                    var prodSql = "SELECT * FROM products WHERE product_id = @id";
+                    var dt = await _dbService.ExecuteQueryAsync(prodSql, new NpgsqlParameter("@id", SelectedSearchResult.ProductId));
+                    if (dt.Rows.Count > 0)
                     {
-                        Product = product,
-                        BatchId = sr.BatchId,
-                        BatchNumber = sr.BatchNumber,
-                        StockAvailable = sr.StockAvailable,
-                        Quantity = AddQuantity
-                    };
-                    newItem.PropertyChanged += (s, e) => ActiveConsole.RecalcTotals();
-                    ActiveConsole.CartItems.Add(newItem);
+                        var p = new Product
+                        {
+                            ProductId = (int)dt.Rows[0]["product_id"],
+                            Name = dt.Rows[0]["name"].ToString() ?? "",
+                            GenericName = dt.Rows[0]["generic_name"].ToString() ?? "",
+                            UnitPrice = Convert.ToDecimal(dt.Rows[0]["unit_price"]),
+                            GstPercent = Convert.ToDecimal(dt.Rows[0]["gst_percent"]),
+                            IsScheduleH1 = Convert.ToBoolean(dt.Rows[0]["is_schedule_h1"])
+                        };
+
+                        ActiveConsole.CartItems.Add(new CartItem
+                        {
+                            Product = p,
+                            BatchId = SelectedSearchResult.BatchId,
+                            BatchNumber = SelectedSearchResult.BatchNumber,
+                            StockAvailable = SelectedSearchResult.StockAvailable,
+                            Quantity = AddQuantity
+                        });
+                    }
                 }
 
                 ActiveConsole.RecalcTotals();
+                StatusMessage = $"Added {AddQuantity} of {SelectedSearchResult.Name} to cart.";
+                
+                // AI Check Interactions in background
+                if (_aiService.IsConfigured && ActiveConsole.CartItems.Count > 1)
+                {
+                    _ = Task.Run(async () => {
+                        var salts = ActiveConsole.CartItems.Select(x => x.Product.GenericName).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct().ToList();
+                        if (salts.Count > 1) {
+                            var interaction = await _aiService.CheckInteractionsAsync(salts);
+                            if (interaction != null && interaction.HasInteraction) {
+                                Avalonia.Threading.Dispatcher.UIThread.Post(() => {
+                                    StatusMessage = $"🚨 AI WARNING: {interaction.WarningMessage}";
+                                });
+                            }
+                        }
+                    });
+                }
 
-                // Reset
-                AddQuantity = 1;
                 SearchInput = string.Empty;
                 SearchResults.Clear();
                 IsSearchVisible = false;
-                StatusMessage = $"Added: {product.Name} x {AddQuantity}";
+                AddQuantity = 1;
             }
             catch (Exception ex)
             {
@@ -653,5 +691,98 @@ namespace PharmacySystem.Desktop.ViewModels
             }
         }
 
+        public async Task ProcessPrescriptionImageAsync(string filePath)
+        {
+            if (!_aiService.IsConfigured)
+            {
+                StatusMessage = "AI is not configured. Add GeminiApiKey in appsettings.";
+                return;
+            }
+
+            try
+            {
+                IsBusy = true;
+                StatusMessage = "AI is reading prescription...";
+                var items = await _aiService.ReadPrescriptionAsync(filePath);
+                
+                if (items == null || items.Count == 0)
+                {
+                    StatusMessage = "AI could not extract medicines from the image.";
+                    return;
+                }
+
+                int added = 0;
+                foreach(var item in items)
+                {
+                    // Search DB for medicine
+                    var sql = @"
+                    SELECT p.product_id, p.name, p.generic_name, p.unit_price, p.gst_percent, p.is_schedule_h1,
+                           b.batch_id, b.batch_number, b.quantity, b.expiry_date
+                    FROM products p
+                    LEFT JOIN LATERAL (
+                        SELECT batch_id, batch_number, quantity, expiry_date
+                        FROM batches
+                        WHERE product_id = p.product_id AND quantity > 0
+                        ORDER BY expiry_date ASC LIMIT 1
+                    ) b ON true
+                    WHERE p.is_active = true AND (p.name ILIKE @q OR p.generic_name ILIKE @q)
+                    ORDER BY p.name LIMIT 1";
+
+                    var dt = await _dbService.ExecuteQueryAsync(sql, new NpgsqlParameter("@q", $"%{item.MedicineName}%"));
+                    if (dt.Rows.Count > 0)
+                    {
+                        var p = new Product
+                        {
+                            ProductId = (int)dt.Rows[0]["product_id"],
+                            Name = dt.Rows[0]["name"].ToString() ?? "",
+                            GenericName = dt.Rows[0]["generic_name"].ToString() ?? "",
+                            UnitPrice = Convert.ToDecimal(dt.Rows[0]["unit_price"]),
+                            GstPercent = Convert.ToDecimal(dt.Rows[0]["gst_percent"]),
+                            IsScheduleH1 = Convert.ToBoolean(dt.Rows[0]["is_schedule_h1"])
+                        };
+
+                        var bidObj = dt.Rows[0]["batch_id"];
+                        int bid = bidObj == DBNull.Value ? 0 : Convert.ToInt32(bidObj);
+                        decimal stock = bidObj == DBNull.Value ? 0 : Convert.ToDecimal(dt.Rows[0]["quantity"]);
+
+                        ActiveConsole.CartItems.Add(new CartItem
+                        {
+                            Product = p,
+                            BatchId = bid,
+                            BatchNumber = dt.Rows[0]["batch_number"]?.ToString() ?? "",
+                            StockAvailable = stock,
+                            Quantity = item.Quantity > 0 ? item.Quantity : 1
+                        });
+                        added++;
+                    }
+                }
+                
+                ActiveConsole.RecalcTotals();
+                StatusMessage = $"AI recognized and added {added} medicines.";
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"AI Vision Error: {ex.Message}";
+            }
+            finally
+            {
+                IsBusy = false;
+            }
+        }
+
+        private async Task AskCopilotAsync()
+        {
+            if (ActiveConsole == null || string.IsNullOrWhiteSpace(ActiveConsole.CopilotQuery)) return;
+            if (!_aiService.IsConfigured) { ActiveConsole.CopilotResponse = "AI Key not configured."; return; }
+            ActiveConsole.CopilotResponse = "Thinking...";
+            try
+            {
+                ActiveConsole.CopilotResponse = await _aiService.GenerateContentAsync("You are a helpful pharmacist AI assistant. " + ActiveConsole.CopilotQuery);
+            }
+            catch (Exception ex)
+            {
+                ActiveConsole.CopilotResponse = "Error: " + ex.Message;
+            }
+        }
     }
 }

@@ -1,6 +1,8 @@
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using PharmacySystem.Desktop.ViewModels;
+using System.Linq;
 
 namespace PharmacySystem.Desktop.Views
 {
@@ -9,6 +11,26 @@ namespace PharmacySystem.Desktop.Views
         public POSView()
         {
             InitializeComponent();
+        }
+
+        private async void ScanPrescription_Click(object? sender, RoutedEventArgs e)
+        {
+            if (DataContext is not SaleViewModel vm) return;
+            var dialog = new OpenFileDialog
+            {
+                Title = "Select Prescription Image",
+                AllowMultiple = false,
+                Filters = new System.Collections.Generic.List<FileDialogFilter>
+                {
+                    new FileDialogFilter { Name = "Images", Extensions = { "png", "jpg", "jpeg", "webp" } }
+                }
+            };
+
+            var result = await dialog.ShowAsync(this);
+            if (result != null && result.Length > 0)
+            {
+                await vm.ProcessPrescriptionImageAsync(result[0]);
+            }
         }
 
         /// <summary>

@@ -13,6 +13,7 @@ namespace PharmacySystem.Desktop.ViewModels
     public class ReportViewModel : ViewModelBase
     {
         private readonly DatabaseService _dbService;
+        private readonly AiService _aiService;
 
         public ObservableCollection<SalesReportRow> SalesReport { get; set; } = new();
         public ObservableCollection<StockReportRow> StockReport { get; set; } = new();
@@ -46,16 +47,66 @@ namespace PharmacySystem.Desktop.ViewModels
             set => SetProperty(ref _statusMessage, value);
         }
 
+        private string _aiChurnMessage = string.Empty;
+        public string AiChurnMessage
+        {
+            get => _aiChurnMessage;
+            set => SetProperty(ref _aiChurnMessage, value);
+        }
+
         public ICommand LoadReportsCommand { get; }
         public ICommand ExportCommand { get; }
+        public ICommand AnalyzeChurnCommand { get; }
 
         public ReportViewModel()
         {
             _dbService = new DatabaseService();
+            _aiService = new AiService();
             LoadReportsCommand = new RelayCommand(async _ => await LoadAllReportsAsync());
             ExportCommand = new RelayCommand(async type => await ExportToCsvAsync(type?.ToString()));
+            AnalyzeChurnCommand = new RelayCommand(async _ => await RunAiChurnAnalysisAsync());
             
             _ = LoadAllReportsAsync();
+        }
+
+        private async Task RunAiChurnAnalysisAsync()
+        {
+            if (!_aiService.IsConfigured) { AiChurnMessage = "AI Key not configured in appsettings.json"; return; }
+            IsBusy = true;
+            AiChurnMessage = "AI is analyzing customer purchase patterns...";
+            try
+            {
+                var sql = @"
+                    SELECT customer_name, customer_phone, MAX(sale_date) as last_visit, COUNT(*) as visit_count 
+                    FROM sales 
+                    WHERE customer_name IS NOT NULL AND customer_name != '' AND customer_phone IS NOT NULL AND customer_phone != ''
+                    GROUP BY customer_name, customer_phone
+                    HAVING MAX(sale_date) < CURRENT_DATE - INTERVAL '60 days' AND COUNT(*) > 1
+                    ORDER BY last_visit DESC LIMIT 30";
+                
+                var dt = await _dbService.ExecuteQueryAsync(sql);
+                var churnData = new System.Collections.Generic.List<string>();
+                foreach (System.Data.DataRow r in dt.Rows)
+                {
+                    churnData.Add($"{r["customer_name"]} (Ph: {r["customer_phone"]}) - Visits: {r["visit_count"]}, Last Visit: {Convert.ToDateTime(r["last_visit"]):yyyy-MM-dd}");
+                }
+
+                if (churnData.Count == 0)
+                {
+                    AiChurnMessage = "No churning customers found in the selected timeframe.";
+                    return;
+                }
+
+                AiChurnMessage = await _aiService.AnalyzeChurnAsync(string.Join("\n", churnData));
+            }
+            catch (Exception ex)
+            {
+                AiChurnMessage = "AI Error: " + ex.Message;
+            }
+            finally
+            {
+                IsBusy = false;
+            }
         }
 
         private async Task LoadAllReportsAsync()
