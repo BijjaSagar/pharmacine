@@ -1,0 +1,57 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:PharmacySystem.Desktop.ViewModels"
+        x:Class="PharmacySystem.Desktop.Views.UserView"
+        Title="Pharmacy System - User Management" Height="600" Width="800"
+        WindowStartupLocation="CenterScreen">
+    
+    <Window.DataContext>
+        <vm:UserViewModel />
+    </Window.DataContext>
+
+    <Grid Margin="15" RowDefinitions="Auto,*,Auto">
+        <!-- Header -->
+        <Border Grid.Row="0" Background="#1E293B" Padding="15" CornerRadius="5" Margin="0,0,0,15">
+            <TextBlock Text="User Management" FontSize="24" FontWeight="Bold" Foreground="White" VerticalAlignment="Center" />
+        </Border>
+
+        <!-- Main Content -->
+        <Grid Grid.Row="1" ColumnDefinitions="2*,1*">
+            <!-- Grid -->
+            <DataGrid Grid.Column="0" ItemsSource="{Binding Users}" SelectedItem="{Binding SelectedUser}" 
+                      AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="All" Background="White" RowHeight="40" Margin="0,0,15,0">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Username" Binding="{Binding Username}" Width="*" />
+                    <DataGridTextColumn Header="Role" Binding="{Binding Role}" Width="150" />
+                    <DataGridCheckBoxColumn Header="Active" Binding="{Binding IsActive}" Width="80" />
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <!-- Form -->
+            <Border Grid.Column="1" Background="White" CornerRadius="5" Padding="15" BorderBrush="#E2E8F0" BorderThickness="1">
+                <StackPanel>
+                    <TextBlock Text="User Details" FontSize="18" FontWeight="Bold" Margin="0,0,0,15"/>
+                    
+                    <TextBlock Text="Username *" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                    <TextBox Text="{Binding Username}" Margin="0,0,0,15" />
+
+                    <TextBlock Text="Password (Leave empty to keep)" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                    <TextBox Text="{Binding Password}" PasswordChar="*" Margin="0,0,0,15" />
+
+                    <TextBlock Text="Role *" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                    <ComboBox ItemsSource="{Binding Roles}" SelectedItem="{Binding Role}" HorizontalAlignment="Stretch" Margin="0,0,0,15" />
+
+                    <CheckBox IsChecked="{Binding IsActive}" Content="Is Active User" Margin="0,0,0,20" />
+
+                    <Grid ColumnDefinitions="*,*">
+                        <Button Grid.Column="0" Content="SAVE" Command="{Binding SaveCommand}" Background="#007ACC" Foreground="White" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="0,0,5,0"/>
+                        <Button Grid.Column="1" Content="CLEAR" Command="{Binding ClearCommand}" Background="#64748B" Foreground="White" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="5,0,0,0"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- Footer -->
+        <TextBlock Grid.Row="2" Text="{Binding ErrorMessage}" Foreground="Red" FontWeight="Bold" Margin="0,15,0,0" TextWrapping="Wrap"/>
+    </Grid>
+</Window>

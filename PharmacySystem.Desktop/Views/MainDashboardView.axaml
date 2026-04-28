@@ -1,0 +1,300 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:PharmacySystem.Desktop.ViewModels"
+        x:Class="PharmacySystem.Desktop.Views.MainDashboardView"
+        Title="ClinicOS - Pharmacy Dashboard"
+        Height="700" Width="1200"
+        WindowStartupLocation="CenterScreen"
+        Background="#F1F5F9">
+
+    <Window.DataContext>
+        <vm:MainDashboardViewModel />
+    </Window.DataContext>
+
+    <Grid RowDefinitions="Auto,Auto,*">
+
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <!-- TOP BRAND BAR -->
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <Border Grid.Row="0" Background="#1E293B" Padding="20,10">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                    <TextBlock Text="🏥" FontSize="22"/>
+                    <StackPanel>
+                        <TextBlock Text="ClinicOS" Foreground="White" FontSize="20" FontWeight="Heavy"/>
+                        <TextBlock Text="Pharmacy Management" Foreground="#94A3B8" FontSize="11"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center"
+                            VerticalAlignment="Center" Spacing="6">
+                    <TextBlock Text="F1=POS" Foreground="#475569" FontSize="12"/>
+                    <TextBlock Text="·" Foreground="#334155"/>
+                    <TextBlock Text="F2=Products" Foreground="#475569" FontSize="12"/>
+                    <TextBlock Text="·" Foreground="#334155"/>
+                    <TextBlock Text="F3=Suppliers" Foreground="#475569" FontSize="12"/>
+                    <TextBlock Text="·" Foreground="#334155"/>
+                    <TextBlock Text="F4=Purchase" Foreground="#475569" FontSize="12"/>
+                    <TextBlock Text="·" Foreground="#334155"/>
+                    <TextBlock Text="F5=Reports" Foreground="#475569" FontSize="12"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding CurrentDate}" Foreground="#94A3B8" FontSize="13"/>
+                    <Border Background="#334155" CornerRadius="20" Padding="12,4">
+                        <TextBlock Text="{Binding LoggedInUser}" Foreground="#38BDF8" FontSize="13" FontWeight="SemiBold"/>
+                    </Border>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <!-- HORIZONTAL NAVIGATION BAR -->
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <Border Grid.Row="1" Background="#0F172A" Padding="8,0">
+            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                <StackPanel Orientation="Horizontal" Spacing="2">
+
+                    <!-- POS – Always visible -->
+                    <Button Command="{Binding OpenPosCommand}"
+                            Background="#3B82F6" Foreground="White"
+                            FontSize="14" FontWeight="Bold"
+                            Padding="20,12" CornerRadius="0,0,0,0" Cursor="Hand"
+                            ToolTip.Tip="F1 — Open Point of Sale">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="🛒"/>
+                            <TextBlock Text="POS / Billing"/>
+                            <Border Background="#1D4ED8" CornerRadius="4" Padding="4,1">
+                                <TextBlock Text="F1" FontSize="11" Foreground="#93C5FD"/>
+                            </Border>
+                        </StackPanel>
+                    </Button>
+
+                    <!-- Separator -->
+                    <Border Background="#1E293B" Width="1" Margin="0,8"/>
+
+                    <!-- Products -->
+                    <Button Command="{Binding OpenProductsCommand}"
+                            IsVisible="{Binding IsAdminOrManager}"
+                            Background="Transparent" Foreground="#CBD5E1"
+                            FontSize="13" Padding="18,12" Cursor="Hand"
+                            ToolTip.Tip="F2 — Products Master">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="📦"/>
+                            <TextBlock Text="Products"/>
+                        </StackPanel>
+                    </Button>
+
+                    <!-- Suppliers -->
+                    <Button Command="{Binding OpenSuppliersCommand}"
+                            IsVisible="{Binding IsAdminOrManager}"
+                            Background="Transparent" Foreground="#CBD5E1"
+                            FontSize="13" Padding="18,12" Cursor="Hand"
+                            ToolTip.Tip="F3 — Suppliers">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="🏢"/>
+                            <TextBlock Text="Suppliers"/>
+                        </StackPanel>
+                    </Button>
+
+                    <!-- Purchase Orders -->
+                    <Button Command="{Binding OpenPurchaseCommand}"
+                            IsVisible="{Binding IsAdminOrManager}"
+                            Background="Transparent" Foreground="#CBD5E1"
+                            FontSize="13" Padding="18,12" Cursor="Hand"
+                            ToolTip.Tip="F4 — Purchase Orders">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="📥"/>
+                            <TextBlock Text="Purchase"/>
+                        </StackPanel>
+                    </Button>
+
+                    <!-- Stock Adjustment -->
+                    <Button Command="{Binding OpenStockAdjustmentCommand}"
+                            IsVisible="{Binding IsAdminOrManager}"
+                            Background="Transparent" Foreground="#CBD5E1"
+                            FontSize="13" Padding="18,12" Cursor="Hand">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="⚖️"/>
+                            <TextBlock Text="Stock Adj."/>
+                        </StackPanel>
+                    </Button>
+
+                    <!-- Inventory Alerts ──── NEW ──── -->
+                    <Button Command="{Binding OpenInventoryAlertsCommand}"
+                            IsVisible="{Binding IsAdminOrManager}"
+                            Background="#7C3AED" Foreground="White"
+                            FontSize="13" FontWeight="SemiBold" Padding="18,12" Cursor="Hand"
+                            ToolTip.Tip="Stock · Expiry · Dead Stock Alerts">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="📋"/>
+                            <TextBlock Text="Inventory Alerts"/>
+                        </StackPanel>
+                    </Button>
+
+                    <!-- Reports -->
+                    <Button Command="{Binding OpenReportsCommand}"
+                            IsVisible="{Binding IsAdminOrManager}"
+                            Background="Transparent" Foreground="#CBD5E1"
+                            FontSize="13" Padding="18,12" Cursor="Hand"
+                            ToolTip.Tip="F5 — Reports">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="📊"/>
+                            <TextBlock Text="Reports"/>
+                        </StackPanel>
+                    </Button>
+
+                    <!-- Admin group — right aligned -->
+                    <Border Background="#1E293B" Width="1" Margin="0,8"/>
+
+                    <Button Command="{Binding OpenUsersCommand}"
+                            IsVisible="{Binding IsAdmin}"
+                            Background="Transparent" Foreground="#CBD5E1"
+                            FontSize="13" Padding="18,12" Cursor="Hand">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="👥"/>
+                            <TextBlock Text="Users"/>
+                        </StackPanel>
+                    </Button>
+
+                    <Button Command="{Binding OpenSettingsCommand}"
+                            IsVisible="{Binding IsAdmin}"
+                            Background="Transparent" Foreground="#CBD5E1"
+                            FontSize="13" Padding="18,12" Cursor="Hand">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="⚙️"/>
+                            <TextBlock Text="Settings &amp; Backup"/>
+                        </StackPanel>
+                    </Button>
+
+                </StackPanel>
+            </ScrollViewer>
+        </Border>
+
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <!-- MAIN CONTENT — Dashboard Cards + Quick Actions -->
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <Grid Grid.Row="2" RowDefinitions="Auto,Auto,*" Margin="30,24,30,20">
+
+            <!-- Welcome -->
+            <StackPanel Grid.Row="0" Margin="0,0,0,20">
+                <TextBlock Text="Dashboard Overview" FontSize="26" FontWeight="Bold" Foreground="#1E293B"/>
+                <TextBlock Text="Welcome back! Here is what's happening today."
+                           FontSize="14" Foreground="#64748B" Margin="0,4,0,0"/>
+            </StackPanel>
+
+            <!-- Stat Cards -->
+            <UniformGrid Grid.Row="1" Columns="3" Rows="2" Margin="0,0,0,24">
+
+                <!-- Row 1 -->
+                <Border Background="White" CornerRadius="12" BorderBrush="#E2E8F0" BorderThickness="1"
+                        Padding="20" Margin="0,0,12,12">
+                    <StackPanel>
+                        <TextBlock Text="💰  Today's Sales" Foreground="#64748B" FontSize="13" FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding TodaySales}" Foreground="#1E293B"
+                                   FontSize="28" FontWeight="Heavy" Margin="0,8,0,0"/>
+                    </StackPanel>
+                </Border>
+                <Border Background="White" CornerRadius="12" BorderBrush="#E2E8F0" BorderThickness="1"
+                        Padding="20" Margin="0,0,12,12">
+                    <StackPanel>
+                        <TextBlock Text="🧾  Today's Orders" Foreground="#64748B" FontSize="13" FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding TotalOrders}" Foreground="#1E293B"
+                                   FontSize="28" FontWeight="Heavy" Margin="0,8,0,0"/>
+                    </StackPanel>
+                </Border>
+                <Border Background="White" CornerRadius="12" BorderBrush="#FCA5A5" BorderThickness="1"
+                        Padding="20" Margin="0,0,0,12">
+                    <StackPanel>
+                        <TextBlock Text="🚫  Out of Stock" Foreground="#64748B" FontSize="13" FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding OutOfStockItems}" Foreground="#EF4444"
+                                   FontSize="28" FontWeight="Heavy" Margin="0,8,0,0"/>
+                        <TextBlock Text="Urgent reorder" Foreground="#EF4444" FontSize="12"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Row 2 -->
+                <Border Background="White" CornerRadius="12" BorderBrush="#FCD34D" BorderThickness="1"
+                        Padding="20" Margin="0,0,12,0">
+                    <StackPanel>
+                        <TextBlock Text="⚠️  Low Stock Items" Foreground="#64748B" FontSize="13" FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding LowStockItems}" Foreground="#F59E0B"
+                                   FontSize="28" FontWeight="Heavy" Margin="0,8,0,0"/>
+                        <TextBlock Text="Below reorder level" Foreground="#F59E0B" FontSize="12"/>
+                    </StackPanel>
+                </Border>
+                <Border Background="White" CornerRadius="12" BorderBrush="#FDBA74" BorderThickness="1"
+                        Padding="20" Margin="0,0,12,0">
+                    <StackPanel>
+                        <TextBlock Text="📅  Expiring &lt;30 Days" Foreground="#64748B" FontSize="13" FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding ExpiringItems}" Foreground="#F97316"
+                                   FontSize="28" FontWeight="Heavy" Margin="0,8,0,0"/>
+                        <TextBlock Text="Review &amp; sell first" Foreground="#F97316" FontSize="12"/>
+                    </StackPanel>
+                </Border>
+                <Border Background="White" CornerRadius="12" BorderBrush="#FCA5A5" BorderThickness="1"
+                        Padding="20" Margin="0">
+                    <StackPanel>
+                        <TextBlock Text="💀  Expired in Stock" Foreground="#64748B" FontSize="13" FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding ExpiredItems}" Foreground="#DC2626"
+                                   FontSize="28" FontWeight="Heavy" Margin="0,8,0,0"/>
+                        <TextBlock Text="Remove immediately!" Foreground="#DC2626" FontSize="12"/>
+                    </StackPanel>
+                </Border>
+
+            </UniformGrid>
+
+            <!-- Quick Action Buttons -->
+            <Border Grid.Row="2" Background="White" CornerRadius="12" Padding="20"
+                    BorderBrush="#E2E8F0" BorderThickness="1" VerticalAlignment="Top">
+                <StackPanel>
+                    <TextBlock Text="Quick Actions" FontSize="16" FontWeight="Bold" Foreground="#334155" Margin="0,0,0,16"/>
+                    <WrapPanel Orientation="Horizontal">
+                        <Button Command="{Binding OpenPosCommand}"
+                                Background="#3B82F6" Foreground="White"
+                                FontSize="15" FontWeight="Bold"
+                                Padding="20,14" Margin="0,0,12,12" CornerRadius="8" Cursor="Hand">
+                            🛒  Open POS  (F1)
+                        </Button>
+                        <Button Command="{Binding OpenPurchaseCommand}"
+                                IsVisible="{Binding IsAdminOrManager}"
+                                Background="#10B981" Foreground="White"
+                                FontSize="15" FontWeight="SemiBold"
+                                Padding="20,14" Margin="0,0,12,12" CornerRadius="8" Cursor="Hand">
+                            📥  New Purchase
+                        </Button>
+                        <Button Command="{Binding OpenReportsCommand}"
+                                IsVisible="{Binding IsAdminOrManager}"
+                                Background="#8B5CF6" Foreground="White"
+                                FontSize="15" FontWeight="SemiBold"
+                                Padding="20,14" Margin="0,0,12,12" CornerRadius="8" Cursor="Hand">
+                            📊  Reports
+                        </Button>
+                        <Button Command="{Binding OpenInventoryAlertsCommand}"
+                                IsVisible="{Binding IsAdminOrManager}"
+                                Background="#7C3AED" Foreground="White"
+                                FontSize="15" FontWeight="SemiBold"
+                                Padding="20,14" Margin="0,0,12,12" CornerRadius="8" Cursor="Hand">
+                            📋  Inventory Alerts
+                        </Button>
+                        <Button Command="{Binding OpenStockAdjustmentCommand}"
+                                IsVisible="{Binding IsAdminOrManager}"
+                                Background="#F59E0B" Foreground="White"
+                                FontSize="15" FontWeight="SemiBold"
+                                Padding="20,14" Margin="0,0,12,12" CornerRadius="8" Cursor="Hand">
+                            ⚖️  Stock Adjust
+                        </Button>
+                        <Button Command="{Binding OpenSettingsCommand}"
+                                IsVisible="{Binding IsAdmin}"
+                                Background="#64748B" Foreground="White"
+                                FontSize="15" FontWeight="SemiBold"
+                                Padding="20,14" Margin="0,0,0,12" CornerRadius="8" Cursor="Hand">
+                            💾  Backup DB
+                        </Button>
+                    </WrapPanel>
+                </StackPanel>
+            </Border>
+
+        </Grid>
+    </Grid>
+</Window>

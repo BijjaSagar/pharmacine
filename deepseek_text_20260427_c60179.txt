@@ -1,0 +1,51 @@
+- **Performance rules**:
+- Index foreign keys & searched columns (barcode, invoice_no, expiry_date).
+- Partition large tables (`sales`, `sale_items`) by month.
+- Use async/await for all DB calls.
+
+### 4. LAN Multi-Client Setup
+- One PC as **server** with PostgreSQL installed.
+- Other PCs as **clients** running only the WPF app.
+- **Connection retry**: exponential backoff (1s, 2s, 4s… up to 30s).
+- **Concurrency**: use database transactions (`ReadCommitted` isolation).
+
+### 5. Module List (Minimum Viable)
+1. **Login** – user/pass, roles (Admin, Biller, Manager)
+2. **Point of Sale (POS)** – barcode scan, batch selection, GST, discount, thermal print, hold/cancel bill
+3. **Inventory** – stock view, low-stock alert, expiry alert, stock adjustment
+4. **Purchase** – purchase order, receive stock, batch creation
+5. **Reports** – sales summary, stock summary, GST report, expiry report
+6. **Backup** – manual + scheduled auto-backup (pg_dump)
+7. **User Management** – create/disable users, role permissions
+
+### 6. Critical Performance Rules
+- **No UI freezes**: all DB operations async.
+- **Grid virtualisation**: load only 500 rows initially, lazy load on scroll.
+- **Indexed search**: barcode, product name, invoice.
+- **Avoid SELECT ***: always specify columns.
+- **Separate read connection** for reports (to avoid blocking writes).
+
+### 7. Future Cloud Sync Preparation
+- Every table must have `last_modified` TIMESTAMP (auto-updated via trigger).
+- Create `sync_queue` table (see schema below).
+- Sync logic: background worker uploads pending records every 5 min (if internet available).
+
+### 8. Configuration File (appsettings.json)
+Location: `%AppData%\PharmacySystem\config.json`
+```json
+{
+"Database": {
+  "Server": "192.168.1.100",
+  "Port": 5432,
+  "DatabaseName": "PharmacyDB",
+  "UserId": "pharm_user",
+  "Password": "encrypted_string"
+},
+"LANMode": "Client",
+"Printer": {
+  "Type": "Thermal",
+  "Port": "USB001",
+  "PaperSize": "58mm"
+},
+"CloudSync": { "Enabled": false, "ApiUrl": "", "SyncIntervalMinutes": 5 }
+}

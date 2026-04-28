@@ -1,0 +1,354 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:sys="clr-namespace:System;assembly=System.Runtime"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:PharmacySystem.Desktop.ViewModels"
+        x:Class="PharmacySystem.Desktop.Views.POSView"
+        Title="ClinicOS — Point of Sale"
+        Width="1400" Height="820"
+        WindowStartupLocation="CenterScreen"
+        Background="#F0F4F8"
+        KeyDown="Window_KeyDown">
+
+    <Window.DataContext>
+        <vm:SaleViewModel />
+    </Window.DataContext>
+
+    <Grid RowDefinitions="Auto,Auto,*,Auto">
+
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <!-- TOP BAR  -->
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <Border Grid.Row="0" Background="#1E293B" Padding="12,8">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <TextBlock Text="🏥  ClinicOS — Point of Sale"
+                           Foreground="White" FontSize="18" FontWeight="Bold"
+                           VerticalAlignment="Center"/>
+                <!-- Keyboard legend -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center"
+                            VerticalAlignment="Center" Spacing="18">
+                    <TextBlock Text="F2 = Search" Foreground="#94A3B8" FontSize="12"/>
+                    <TextBlock Text="F5 = Checkout" Foreground="#94A3B8" FontSize="12"/>
+                    <TextBlock Text="F8 = Cancel Bill" Foreground="#94A3B8" FontSize="12"/>
+                    <TextBlock Text="Ctrl+1…0 = Switch Console" Foreground="#94A3B8" FontSize="12"/>
+                    <TextBlock Text="Enter = Add Item" Foreground="#94A3B8" FontSize="12"/>
+                    <TextBlock Text="Del = Remove Row" Foreground="#94A3B8" FontSize="12"/>
+                </StackPanel>
+                <TextBlock Grid.Column="2"
+                           Text="{Binding ActiveConsole.Header, StringFormat='Active: {0}'}"
+                           Foreground="#38BDF8" FontSize="14" FontWeight="Bold"
+                           VerticalAlignment="Center"/>
+            </Grid>
+        </Border>
+
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <!-- CONSOLE TABS  (Console 1 … Console 10) -->
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <Border Grid.Row="1" Background="#0F172A" Padding="4,0,4,0">
+            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                <ItemsControl ItemsSource="{Binding Consoles}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Button Command="{Binding DataContext.SwitchConsoleCommand,
+                                        RelativeSource={RelativeSource AncestorType=Window}}"
+                                    CommandParameter="{Binding ConsoleNumber}"
+                                    Padding="16,10" Margin="2,4"
+                                    CornerRadius="6,6,0,0"
+                                    Cursor="Hand">
+                                <Button.Background>
+                                    <SolidColorBrush Color="#334155"/>
+                                </Button.Background>
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <TextBlock Text="{Binding Header}" Foreground="White"
+                                               FontSize="13" FontWeight="SemiBold"/>
+                                    <Border Background="#EF4444" CornerRadius="8" Padding="4,1"
+                                            IsVisible="{Binding ItemCount, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                        <TextBlock Text="{Binding ItemCount}" Foreground="White" FontSize="11"/>
+                                    </Border>
+                                </StackPanel>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Border>
+
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <!-- MAIN BODY -->
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <Grid Grid.Row="2" ColumnDefinitions="*,340" Margin="0">
+
+            <!-- LEFT: Bill items -->
+            <Grid RowDefinitions="Auto,Auto,*" Margin="12,10,6,0">
+
+                <!-- Customer / Doctor row -->
+                <Border Grid.Row="0" Background="White" CornerRadius="8" Padding="12,10"
+                        BorderBrush="#E2E8F0" BorderThickness="1" Margin="0,0,0,8">
+                    <Grid ColumnDefinitions="*,*,*,Auto">
+                        <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                            <TextBlock Text="👤  Customer Name" FontSize="11" Foreground="#64748B" FontWeight="SemiBold"/>
+                            <TextBox x:Name="CustomerNameBox"
+                                     Text="{Binding ActiveConsole.CustomerName}"
+                                     Watermark="Walk-in / Patient Name"
+                                     FontSize="14" Height="34"
+                                     Background="#F8FAFC" BorderBrush="#CBD5E1"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Margin="0,0,8,0">
+                            <TextBlock Text="📞  Phone" FontSize="11" Foreground="#64748B" FontWeight="SemiBold"/>
+                            <TextBox Text="{Binding ActiveConsole.CustomerPhone}"
+                                     Watermark="Mobile Number"
+                                     FontSize="14" Height="34"
+                                     Background="#F8FAFC" BorderBrush="#CBD5E1"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2" Margin="0,0,8,0">
+                            <TextBlock Text="🩺  Doctor Name" FontSize="11" Foreground="#64748B" FontWeight="SemiBold"/>
+                            <TextBox Text="{Binding ActiveConsole.DoctorName}"
+                                     Watermark="Prescribing Doctor"
+                                     FontSize="14" Height="34"
+                                     Background="#F8FAFC" BorderBrush="#CBD5E1"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="3">
+                            <TextBlock Text="🏷  Discount %" FontSize="11" Foreground="#64748B" FontWeight="SemiBold"/>
+                            <NumericUpDown Value="{Binding ActiveConsole.DiscountPercent}"
+                                          Minimum="0" Maximum="100"
+                                          Width="100" Height="34" FontSize="14"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- Search Bar -->
+                <Border Grid.Row="1" Background="White" CornerRadius="8"
+                        BorderBrush="#3B82F6" BorderThickness="2" Margin="0,0,0,6">
+                    <Grid ColumnDefinitions="*,Auto,Auto">
+                        <TextBox x:Name="SearchBox"
+                                 Grid.Column="0"
+                                 Text="{Binding SearchInput}"
+                                 Watermark="🔍  Type medicine name or barcode… (F2 to focus)"
+                                 FontSize="15" Background="Transparent" BorderThickness="0"
+                                 Padding="14,10"
+                                 KeyDown="SearchBox_KeyDown"/>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,4,0">
+                            <TextBlock Text="Qty:" VerticalAlignment="Center" Margin="0,0,6,0" FontWeight="SemiBold"/>
+                            <NumericUpDown Value="{Binding AddQuantity}"
+                                          Minimum="0.25" Increment="0.25"
+                                          Width="90" Height="34" FontSize="14"
+                                          ToolTip.Tip="Supports half units (0.5, 1.5…)"/>
+                        </StackPanel>
+                        <Button Grid.Column="2" Content="Add  ↵"
+                                Command="{Binding AddToCartCommand}"
+                                Background="#3B82F6" Foreground="White"
+                                FontSize="14" FontWeight="Bold"
+                                Padding="16,8" Margin="4,4,8,4"
+                                CornerRadius="6"/>
+                    </Grid>
+                </Border>
+
+                <!-- Search Dropdown -->
+                <Border Grid.Row="2" IsVisible="{Binding IsSearchVisible}"
+                        Background="White" CornerRadius="8" BorderBrush="#3B82F6" BorderThickness="1"
+                        ZIndex="100" VerticalAlignment="Top" Margin="0,0,0,0" MaxHeight="260">
+                    <Grid RowDefinitions="Auto,*">
+                        <Border Grid.Row="0" Background="#EFF6FF" Padding="10,6" CornerRadius="8,8,0,0">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Text="Search Results — click or use ↑↓ Enter to add"
+                                           FontSize="12" Foreground="#1E40AF" FontWeight="SemiBold"/>
+                                <Button Grid.Column="1" Content="✕ Close" Command="{Binding ClearSearchCommand}"
+                                        Background="Transparent" Foreground="#64748B" FontSize="12" Padding="6,2"/>
+                            </Grid>
+                        </Border>
+                        <ListBox Grid.Row="1"
+                                 ItemsSource="{Binding SearchResults}"
+                                 SelectedItem="{Binding SelectedSearchResult}"
+                                 Background="Transparent" BorderThickness="0"
+                                 x:Name="SearchList"
+                 KeyDown="SearchList_KeyDown">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Padding="10,8" BorderBrush="#E2E8F0" BorderThickness="0,0,0,1">
+                                        <Grid ColumnDefinitions="*,Auto,Auto">
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="SemiBold" Foreground="#0F172A"/>
+                                                <TextBlock Text="{Binding Category}" FontSize="11" Foreground="#64748B"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="1" Margin="20,0" HorizontalAlignment="Right">
+                                                <TextBlock Text="{Binding PriceDisplay}" FontSize="14" FontWeight="Bold" Foreground="#10B981"/>
+                                                <TextBlock Text="{Binding StockDisplay}" FontSize="11"
+                                                           Foreground="{Binding StockAvailable,
+                                                               Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                                            </StackPanel>
+                                            <TextBlock Grid.Column="2" Text="{Binding BatchNumber}"
+                                                       FontSize="11" Foreground="#94A3B8"
+                                                       VerticalAlignment="Center" Margin="10,0,0,0"/>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Grid>
+                </Border>
+
+                <!-- Cart Grid (when no search open) -->
+                <DataGrid Grid.Row="2"
+                          x:Name="CartGrid"
+                          ItemsSource="{Binding ActiveConsole.CartItems}"
+                          AutoGenerateColumns="False"
+                          IsReadOnly="False"
+                          CanUserReorderColumns="False"
+                          HeadersVisibility="Column"
+                          GridLinesVisibility="Horizontal"
+                          Background="White"
+                          RowHeight="44"
+                          FontSize="14"
+                          IsVisible="{Binding IsSearchVisible, Converter={x:Static BoolConverters.Not}}"
+                          KeyDown="CartGrid_KeyDown">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="#" Width="40" IsReadOnly="True"
+                                            Binding="{Binding BatchNumber}"/>
+                        <DataGridTextColumn Header="Medicine Name" Width="*" IsReadOnly="True"
+                                            Binding="{Binding Product.Name}"/>
+                        <DataGridTextColumn Header="Batch" Width="100" IsReadOnly="True"
+                                            Binding="{Binding BatchNumber}"/>
+                        <DataGridTextColumn Header="Stock" Width="70" IsReadOnly="True"
+                                            Binding="{Binding StockAvailable}"/>
+                        <DataGridTextColumn Header="MRP" Width="90" IsReadOnly="True"
+                                            Binding="{Binding Product.UnitPrice, StringFormat={}{0:F2}}"/>
+                        <DataGridTemplateColumn Header="Qty" Width="110">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <NumericUpDown Value="{Binding Quantity}"
+                                                   Minimum="0.25" Increment="0.25"
+                                                   FontSize="14"
+                                                   Background="Transparent"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTextColumn Header="GST ₹" Width="90" IsReadOnly="True"
+                                            Binding="{Binding GstAmount, StringFormat={}{0:F2}}"/>
+                        <DataGridTextColumn Header="Total ₹" Width="100" IsReadOnly="True"
+                                            Binding="{Binding Total, StringFormat={}{0:F2}}"/>
+                        <DataGridTemplateColumn Header="Del" Width="50">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Button Content="✕"
+                                            Command="{Binding DataContext.RemoveFromCartCommand,
+                                                RelativeSource={RelativeSource AncestorType=Window}}"
+                                            CommandParameter="{Binding}"
+                                            Background="Transparent" Foreground="#EF4444"
+                                            FontSize="16" FontWeight="Bold" Padding="4"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Grid>
+
+            <!-- RIGHT: Totals + Actions -->
+            <Border Grid.Column="1" Background="White" Margin="6,10,12,0" CornerRadius="10"
+                    BorderBrush="#E2E8F0" BorderThickness="1">
+                <Grid RowDefinitions="Auto,*,Auto">
+
+                    <!-- Console Summary Header -->
+                    <Border Grid.Row="0" Background="#1E293B" CornerRadius="10,10,0,0" Padding="16,12">
+                        <StackPanel>
+                            <TextBlock Text="{Binding ActiveConsole.Header}"
+                                       Foreground="White" FontSize="20" FontWeight="Heavy"/>
+                            <TextBlock Text="{Binding ActiveConsole.CustomerName, StringFormat='Customer: {0}'}"
+                                       Foreground="#94A3B8" FontSize="13"/>
+                            <TextBlock Text="{Binding ActiveConsole.DoctorName, StringFormat='Dr. {0}'}"
+                                       Foreground="#64748B" FontSize="12"
+                                       IsVisible="{Binding ActiveConsole.DoctorName,
+                                           Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Totals -->
+                    <StackPanel Grid.Row="1" Margin="16,16,16,0" Spacing="12">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Text="Sub Total" Foreground="#64748B" FontSize="15"/>
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding ActiveConsole.SubTotal, StringFormat='₹ {0:F2}'}"
+                                       FontSize="15" FontWeight="SemiBold"/>
+                        </Grid>
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Text="GST" Foreground="#64748B" FontSize="15"/>
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding ActiveConsole.TotalGst, StringFormat='₹ {0:F2}'}"
+                                       FontSize="15"/>
+                        </Grid>
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Text="{Binding ActiveConsole.DiscountPercent, StringFormat='Discount ({0}%)'}"
+                                       Foreground="#EF4444" FontSize="15"/>
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding ActiveConsole.DiscountAmount, StringFormat='- ₹ {0:F2}'}"
+                                       Foreground="#EF4444" FontSize="15"/>
+                        </Grid>
+                        <Separator Background="#E2E8F0"/>
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Text="GRAND TOTAL" FontSize="20" FontWeight="Heavy" Foreground="#1E293B"/>
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding ActiveConsole.GrandTotal, StringFormat='₹ {0:F2}'}"
+                                       FontSize="22" FontWeight="Heavy" Foreground="#10B981"/>
+                        </Grid>
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Text="Items in cart" Foreground="#94A3B8" FontSize="13"/>
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding ActiveConsole.ItemCount}"
+                                       Foreground="#94A3B8" FontSize="13"/>
+                        </Grid>
+                    </StackPanel>
+
+                    <!-- Action Buttons -->
+                    <StackPanel Grid.Row="2" Margin="12,12,12,16" Spacing="8">
+                        <!-- F5 Checkout -->
+                        <Button Content="✅  F5 — CHECKOUT &amp; PRINT"
+                                Command="{Binding CheckoutCommand}"
+                                Background="#10B981" Foreground="White"
+                                FontSize="16" FontWeight="Bold"
+                                Height="50" HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Center"
+                                CornerRadius="8"
+                                ToolTip.Tip="Press F5"/>
+                        <!-- F8 Cancel -->
+                        <Button Content="🗑  F8 — CANCEL BILL"
+                                Command="{Binding CancelBillCommand}"
+                                Background="#EF4444" Foreground="White"
+                                FontSize="14" FontWeight="Bold"
+                                Height="40" HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Center"
+                                CornerRadius="8"
+                                ToolTip.Tip="Press F8"/>
+                        <!-- Status line -->
+                        <Border Background="#F0FDF4" CornerRadius="6" Padding="10,6"
+                                IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                            <TextBlock Text="{Binding StatusMessage}"
+                                       TextWrapping="Wrap" FontSize="12"
+                                       Foreground="#15803D"/>
+                        </Border>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <!-- BOTTOM STATUS BAR -->
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <Border Grid.Row="3" Background="#1E293B" Padding="12,5">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <TextBlock Text="🟢  Connected" Foreground="#4ADE80" FontSize="12" VerticalAlignment="Center"/>
+                <TextBlock Grid.Column="1"
+                           Text="{Binding StatusMessage}"
+                           Foreground="#CBD5E1" FontSize="12"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                <TextBlock Grid.Column="2"
+                           Text="ClinicOS Pharmacy v1.0"
+                           Foreground="#64748B" FontSize="12" VerticalAlignment="Center">
+                </TextBlock>
+            </Grid>
+        </Border>
+
+    </Grid>
+</Window>

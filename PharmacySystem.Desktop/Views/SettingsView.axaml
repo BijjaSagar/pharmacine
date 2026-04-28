@@ -1,0 +1,32 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:PharmacySystem.Desktop.ViewModels"
+        x:Class="PharmacySystem.Desktop.Views.SettingsView"
+        Title="Pharmacy System - Settings" Height="400" Width="600"
+        WindowStartupLocation="CenterScreen">
+    
+    <Window.DataContext>
+        <vm:SettingsViewModel />
+    </Window.DataContext>
+
+    <Grid Margin="20" RowDefinitions="Auto,*">
+        <!-- Header -->
+        <Border Grid.Row="0" Background="#475569" Padding="15" CornerRadius="5" Margin="0,0,0,20">
+            <TextBlock Text="System Settings &amp; Backup" FontSize="24" FontWeight="Bold" Foreground="White" VerticalAlignment="Center" />
+        </Border>
+
+        <!-- Main Content -->
+        <Border Grid.Row="1" Background="White" CornerRadius="5" Padding="20" BorderBrush="#E2E8F0" BorderThickness="1">
+            <StackPanel Spacing="15">
+                <TextBlock Text="Database Backup" FontSize="18" FontWeight="Bold" Foreground="#1E293B"/>
+                <TextBlock Text="Manually trigger a full database backup. The backup file will be saved in the application directory." TextWrapping="Wrap" Foreground="#64748B"/>
+                
+                <Button Content="BACKUP DATABASE NOW" Command="{Binding BackupDatabaseCommand}" 
+                        Background="#10B981" Foreground="White" FontSize="16" FontWeight="Bold" 
+                        Height="40" Width="220" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" />
+                
+                <TextBlock Text="{Binding StatusMessage}" Foreground="#0F172A" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,10,0,0" />
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>

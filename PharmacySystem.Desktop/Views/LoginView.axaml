@@ -1,0 +1,38 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:PharmacySystem.Desktop.ViewModels"
+        x:Class="PharmacySystem.Desktop.Views.LoginView"
+        Title="Pharmacy System - Login" Height="350" Width="400"
+        WindowStartupLocation="CenterScreen"
+        CanResize="False">
+    
+    <Window.DataContext>
+        <vm:LoginViewModel />
+    </Window.DataContext>
+
+    <Grid Margin="30">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Text="ClinicOS POS" FontSize="26" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,30" Foreground="#007ACC" />
+
+        <TextBlock Grid.Row="1" Text="Username" Margin="0,0,0,5" FontWeight="SemiBold" />
+        <TextBox Grid.Row="2" Text="{Binding Username}" Margin="0,0,0,15" Height="35" Padding="5" FontSize="14" />
+
+        <TextBlock Grid.Row="3" Text="Password" Margin="0,0,0,5" FontWeight="SemiBold" />
+        <TextBox Grid.Row="4" Text="{Binding Password}" PasswordChar="*" Margin="0,0,0,25" Height="35" Padding="5" FontSize="14" />
+
+        <Button Grid.Row="5" Content="Login" Command="{Binding LoginCommand}" 
+                Height="40" Background="#007ACC" Foreground="White" FontWeight="Bold" FontSize="14"
+                VerticalAlignment="Top" BorderThickness="0" Cursor="Hand" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+
+        <TextBlock Grid.Row="5" Text="{Binding ErrorMessage}" Foreground="Red" FontWeight="Medium" 
+                   VerticalAlignment="Bottom" HorizontalAlignment="Center" TextWrapping="Wrap" />
+    </Grid>
+</Window>

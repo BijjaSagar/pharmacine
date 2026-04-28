@@ -1,0 +1,295 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:PharmacySystem.Desktop.ViewModels"
+        x:Class="PharmacySystem.Desktop.Views.InventoryAlertView"
+        Title="ClinicOS — Inventory Alerts"
+        Width="1260" Height="860"
+        WindowStartupLocation="CenterScreen"
+        Background="#F0F4F8">
+
+    <Window.DataContext>
+        <vm:InventoryAlertViewModel />
+    </Window.DataContext>
+
+    <Grid RowDefinitions="Auto,Auto,*,Auto">
+
+        <!-- ══ TOP BAR ══════════════════════════════════════════════════ -->
+        <Border Grid.Row="0" Background="#1E293B" Padding="20,12">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                    <TextBlock Text="📋" FontSize="22"/>
+                    <StackPanel>
+                        <TextBlock Text="Inventory Alerts" Foreground="White" FontSize="20" FontWeight="Heavy"/>
+                        <TextBlock Text="Real-time stock, expiry &amp; dead-stock intelligence"
+                                   Foreground="#94A3B8" FontSize="11"/>
+                    </StackPanel>
+                </StackPanel>
+                <TextBlock Grid.Column="2" Text="{Binding LastRefreshed}"
+                           Foreground="#64748B" FontSize="12" VerticalAlignment="Center"/>
+            </Grid>
+        </Border>
+
+        <!-- ══ 5 KPI CARDS ══════════════════════════════════════════════ -->
+        <UniformGrid Grid.Row="1" Columns="5" Margin="20,16,20,0">
+
+            <!-- Out of Stock -->
+            <Border Background="#FEF2F2" CornerRadius="10" BorderBrush="#FCA5A5" BorderThickness="1"
+                    Padding="16,12" Margin="0,0,10,0">
+                <StackPanel>
+                    <TextBlock Text="🚫  Out of Stock" FontSize="12" FontWeight="SemiBold" Foreground="#64748B"/>
+                    <TextBlock Text="{Binding OutOfStockCount}" FontSize="32" FontWeight="Heavy"
+                               Foreground="#EF4444" Margin="0,6,0,0"/>
+                    <TextBlock Text="Need urgent reorder" FontSize="11" Foreground="#EF4444"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Low Stock -->
+            <Border Background="#FFFBEB" CornerRadius="10" BorderBrush="#FCD34D" BorderThickness="1"
+                    Padding="16,12" Margin="0,0,10,0">
+                <StackPanel>
+                    <TextBlock Text="⚠️  Low Stock" FontSize="12" FontWeight="SemiBold" Foreground="#64748B"/>
+                    <TextBlock Text="{Binding LowStockCount}" FontSize="32" FontWeight="Heavy"
+                               Foreground="#F59E0B" Margin="0,6,0,0"/>
+                    <TextBlock Text="Below reorder level" FontSize="11" Foreground="#F59E0B"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Expiring -->
+            <Border Background="#FFF7ED" CornerRadius="10" BorderBrush="#FDBA74" BorderThickness="1"
+                    Padding="16,12" Margin="0,0,10,0">
+                <StackPanel>
+                    <TextBlock Text="📅  Expiring Soon" FontSize="12" FontWeight="SemiBold" Foreground="#64748B"/>
+                    <TextBlock Text="{Binding ExpiringCount}" FontSize="32" FontWeight="Heavy"
+                               Foreground="#F97316" Margin="0,6,0,0"/>
+                    <TextBlock Text="{Binding ExpiryDays, StringFormat='Within {0} days'}" FontSize="11" Foreground="#F97316"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Expired -->
+            <Border Background="#FEF2F2" CornerRadius="10" BorderBrush="#FCA5A5" BorderThickness="1"
+                    Padding="16,12" Margin="0,0,10,0">
+                <StackPanel>
+                    <TextBlock Text="💀  Expired (in stock)" FontSize="12" FontWeight="SemiBold" Foreground="#64748B"/>
+                    <TextBlock Text="{Binding ExpiredCount}" FontSize="32" FontWeight="Heavy"
+                               Foreground="#DC2626" Margin="0,6,0,0"/>
+                    <TextBlock Text="Must be removed NOW" FontSize="11" Foreground="#DC2626"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Dead Stock -->
+            <Border Background="#F8FAFC" CornerRadius="10" BorderBrush="#CBD5E1" BorderThickness="1"
+                    Padding="16,12" Margin="0">
+                <StackPanel>
+                    <TextBlock Text="💤  Dead Stock" FontSize="12" FontWeight="SemiBold" Foreground="#64748B"/>
+                    <TextBlock Text="{Binding DeadStockCount}" FontSize="32" FontWeight="Heavy"
+                               Foreground="#64748B" Margin="0,6,0,0"/>
+                    <TextBlock Text="{Binding IdleDays, StringFormat='No sale in {0}+ days'}" FontSize="11" Foreground="#64748B"/>
+                </StackPanel>
+            </Border>
+
+        </UniformGrid>
+
+        <!-- ══ FOUR PANELS ══════════════════════════════════════════════ -->
+        <Grid Grid.Row="2" ColumnDefinitions="*,*" RowDefinitions="*,*" Margin="20,14,20,0">
+
+            <!-- Panel 1 — Out of Stock ─────────────────────────────────── -->
+            <Border Grid.Row="0" Grid.Column="0" Background="White" CornerRadius="10"
+                    BorderBrush="#FCA5A5" BorderThickness="1" Margin="0,0,8,8">
+                <Grid RowDefinitions="Auto,*">
+                    <Border Grid.Row="0" Background="#FEF2F2" CornerRadius="10,10,0,0" Padding="14,10">
+                        <TextBlock Text="🚫  Out of Stock Items" FontSize="14" FontWeight="Bold" Foreground="#EF4444"/>
+                    </Border>
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding OutOfStockItems}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Padding="12,8" BorderBrush="#FEE2E2" BorderThickness="0,0,0,1">
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="{Binding MedicineName}" FontWeight="SemiBold"
+                                                           FontSize="13" Foreground="#1E293B"/>
+                                                <TextBlock Text="{Binding Category}" FontSize="11" Foreground="#94A3B8"/>
+                                                <TextBlock Text="{Binding Supplier}" FontSize="11" Foreground="#64748B"/>
+                                            </StackPanel>
+                                            <Border Grid.Column="1" Background="#EF4444" CornerRadius="4"
+                                                    Padding="8,3" VerticalAlignment="Center">
+                                                <TextBlock Text="OUT OF STOCK" Foreground="White"
+                                                           FontSize="10" FontWeight="Bold"/>
+                                            </Border>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+
+            <!-- Panel 2 — Low Stock ────────────────────────────────────── -->
+            <Border Grid.Row="0" Grid.Column="1" Background="White" CornerRadius="10"
+                    BorderBrush="#FCD34D" BorderThickness="1" Margin="0,0,0,8">
+                <Grid RowDefinitions="Auto,*">
+                    <Border Grid.Row="0" Background="#FFFBEB" CornerRadius="10,10,0,0" Padding="14,10">
+                        <TextBlock Text="⚠️  Low Stock — Below Reorder Level" FontSize="14" FontWeight="Bold" Foreground="#F59E0B"/>
+                    </Border>
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding LowStockItems}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Padding="12,8" BorderBrush="#FEF3C7" BorderThickness="0,0,0,1">
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="{Binding MedicineName}" FontWeight="SemiBold"
+                                                           FontSize="13" Foreground="#1E293B"/>
+                                                <TextBlock Text="{Binding StockDisplay}" FontSize="11" Foreground="#F59E0B"/>
+                                                <TextBlock Text="{Binding Supplier}" FontSize="11" Foreground="#64748B"/>
+                                            </StackPanel>
+                                            <Border Grid.Column="1" Background="#FEF3C7" CornerRadius="4"
+                                                    Padding="8,3" VerticalAlignment="Center"
+                                                    BorderBrush="#F59E0B" BorderThickness="1">
+                                                <TextBlock Text="{Binding StockQty, StringFormat='Qty: {0:N1}'}"
+                                                           Foreground="#92400E" FontSize="11" FontWeight="Bold"/>
+                                            </Border>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+
+            <!-- Panel 3 — Expiry Alerts ────────────────────────────────── -->
+            <Border Grid.Row="1" Grid.Column="0" Background="White" CornerRadius="10"
+                    BorderBrush="#FDBA74" BorderThickness="1" Margin="0,0,8,0">
+                <Grid RowDefinitions="Auto,Auto,*">
+                    <Border Grid.Row="0" Background="#FFF7ED" CornerRadius="10,10,0,0" Padding="14,10">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Text="📅  Expiry Alert" FontSize="14" FontWeight="Bold" Foreground="#F97316"
+                                       VerticalAlignment="Center"/>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                                <Button Command="{Binding Set15DaysCommand}"
+                                        Background="#FED7AA" Foreground="#92400E"
+                                        FontSize="11" Padding="8,4" CornerRadius="4">15d</Button>
+                                <Button Command="{Binding Set30DaysCommand}"
+                                        Background="#FB923C" Foreground="White"
+                                        FontSize="11" Padding="8,4" CornerRadius="4">30d</Button>
+                                <Button Command="{Binding Set60DaysCommand}"
+                                        Background="#FED7AA" Foreground="#92400E"
+                                        FontSize="11" Padding="8,4" CornerRadius="4">60d</Button>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                    <!-- Column headers -->
+                    <Grid Grid.Row="1" ColumnDefinitions="*,90,90,90"
+                          Background="#FFF7ED" Margin="0" Height="28">
+                        <TextBlock Grid.Column="0" Text="Medicine / Batch" FontSize="11"
+                                   FontWeight="Bold" Foreground="#64748B" Margin="12,0,0,0" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="1" Text="Stock" FontSize="11"
+                                   FontWeight="Bold" Foreground="#64748B" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                        <TextBlock Grid.Column="2" Text="Expiry" FontSize="11"
+                                   FontWeight="Bold" Foreground="#64748B" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                        <TextBlock Grid.Column="3" Text="Days" FontSize="11"
+                                   FontWeight="Bold" Foreground="#64748B" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                    </Grid>
+                    <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding ExpiryItems}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Padding="0,0" BorderBrush="#FEF3C7" BorderThickness="0,0,0,1">
+                                        <Grid ColumnDefinitions="*,90,90,90" Height="44">
+                                            <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="12,0">
+                                                <TextBlock Text="{Binding MedicineName}" FontWeight="SemiBold"
+                                                           FontSize="12" Foreground="#1E293B"/>
+                                                <TextBlock Text="{Binding BatchNumber}" FontSize="10" Foreground="#94A3B8"/>
+                                            </StackPanel>
+                                            <TextBlock Grid.Column="1" Text="{Binding StockQty, StringFormat='{}{0:N1}'}"
+                                                       VerticalAlignment="Center" HorizontalAlignment="Center"
+                                                       FontSize="12" Foreground="#1E293B"/>
+                                            <TextBlock Grid.Column="2" Text="{Binding ExpiryDisplay}"
+                                                       VerticalAlignment="Center" HorizontalAlignment="Center"
+                                                       FontSize="11" Foreground="#64748B"/>
+                                            <Border Grid.Column="3" Background="{Binding StatusColor}"
+                                                    CornerRadius="4" Padding="6,2" VerticalAlignment="Center"
+                                                    HorizontalAlignment="Center">
+                                                <TextBlock Text="{Binding DaysDisplay}" Foreground="White"
+                                                           FontSize="10" FontWeight="Bold"/>
+                                            </Border>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+
+            <!-- Panel 4 — Dead Stock ────────────────────────────────────── -->
+            <Border Grid.Row="1" Grid.Column="1" Background="White" CornerRadius="10"
+                    BorderBrush="#CBD5E1" BorderThickness="1" Margin="0">
+                <Grid RowDefinitions="Auto,Auto,*">
+                    <Border Grid.Row="0" Background="#F8FAFC" CornerRadius="10,10,0,0" Padding="14,10">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Text="💤  Dead Stock (No Movement)" FontSize="14" FontWeight="Bold"
+                                       Foreground="#475569" VerticalAlignment="Center"/>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                                <TextBlock Text="{Binding IdleDays, StringFormat='Idle &gt; {0} days'}"
+                                           FontSize="11" Foreground="#64748B" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                    <Grid Grid.Row="1" ColumnDefinitions="*,90,90"
+                          Background="#F8FAFC" Height="28">
+                        <TextBlock Grid.Column="0" Text="Medicine / Batch" FontSize="11"
+                                   FontWeight="Bold" Foreground="#64748B" Margin="12,0,0,0" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="1" Text="Stock" FontSize="11"
+                                   FontWeight="Bold" Foreground="#64748B" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                        <TextBlock Grid.Column="2" Text="Idle" FontSize="11"
+                                   FontWeight="Bold" Foreground="#64748B" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                    </Grid>
+                    <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding DeadStockItems}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Padding="0,0" BorderBrush="#E2E8F0" BorderThickness="0,0,0,1">
+                                        <Grid ColumnDefinitions="*,90,90" Height="44">
+                                            <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="12,0">
+                                                <TextBlock Text="{Binding MedicineName}" FontWeight="SemiBold"
+                                                           FontSize="12" Foreground="#1E293B"/>
+                                                <TextBlock Text="{Binding BatchNumber}" FontSize="10" Foreground="#94A3B8"/>
+                                            </StackPanel>
+                                            <TextBlock Grid.Column="1" Text="{Binding StockQty, StringFormat='{}{0:N1}'}"
+                                                       VerticalAlignment="Center" HorizontalAlignment="Center"
+                                                       FontSize="12" Foreground="#1E293B"/>
+                                            <Border Grid.Column="2" Background="#E2E8F0"
+                                                    CornerRadius="4" Padding="6,2" VerticalAlignment="Center"
+                                                    HorizontalAlignment="Center">
+                                                <TextBlock Text="{Binding IdleDisplay}" Foreground="#475569"
+                                                           FontSize="10" FontWeight="Bold"/>
+                                            </Border>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+
+        </Grid>
+
+        <!-- ══ BOTTOM BAR ══════════════════════════════════════════════ -->
+        <Border Grid.Row="3" Background="#1E293B" Padding="20,10" Margin="0,12,0,0">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Text="💡  Tip: Sell expiring stock first via POS → search by generic name to find alternatives"
+                           Foreground="#94A3B8" FontSize="12" VerticalAlignment="Center"/>
+                <Button Grid.Column="1" Command="{Binding RefreshCommand}"
+                        Background="#3B82F6" Foreground="White"
+                        FontSize="13" FontWeight="Bold" Padding="20,10" CornerRadius="6" Cursor="Hand">
+                    🔄  Refresh Now
+                </Button>
+            </Grid>
+        </Border>
+
+    </Grid>
+</Window>
