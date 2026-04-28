@@ -56,6 +56,7 @@ namespace PharmacySystem.Desktop.ViewModels
 
         public ICommand LoadReportsCommand { get; }
         public ICommand ExportCommand { get; }
+        public ICommand ExportToTallyCommand { get; }
         public ICommand AnalyzeChurnCommand { get; }
 
         public ReportViewModel()
@@ -64,6 +65,7 @@ namespace PharmacySystem.Desktop.ViewModels
             _aiService = new AiService();
             LoadReportsCommand = new RelayCommand(async _ => await LoadAllReportsAsync());
             ExportCommand = new RelayCommand(async type => await ExportToCsvAsync(type?.ToString()));
+            ExportToTallyCommand = new RelayCommand(async _ => await ExportToTallyXmlAsync());
             AnalyzeChurnCommand = new RelayCommand(async _ => await RunAiChurnAnalysisAsync());
             
             _ = LoadAllReportsAsync();
@@ -286,6 +288,52 @@ namespace PharmacySystem.Desktop.ViewModels
             catch (Exception ex)
             {
                 StatusMessage = "Export failed: " + ex.Message;
+            }
+        }
+        private async Task ExportToTallyXmlAsync()
+        {
+            IsBusy = true;
+            try
+            {
+                StringBuilder xml = new StringBuilder();
+                xml.AppendLine("<ENVELOPE>");
+                xml.AppendLine("  <HEADER><TALLYREQUEST>Import Data</TALLYREQUEST></HEADER>");
+                xml.AppendLine("  <BODY>");
+                xml.AppendLine("    <IMPORTDATA>");
+                xml.AppendLine("      <REQUESTDESC><REPORTNAME>Vouchers</REPORTNAME></REQUESTDESC>");
+                xml.AppendLine("      <REQUESTDATA>");
+                
+                foreach (var sale in SalesReport)
+                {
+                    xml.AppendLine("        <TALLYMESSAGE xmlns:UDF=\"TallyUDF\">");
+                    xml.AppendLine("          <VOUCHER VCHTYPE=\"Sales\" ACTION=\"Create\">");
+                    xml.AppendLine($"            <DATE>{sale.SaleDate:yyyyMMdd}</DATE>");
+                    xml.AppendLine($"            <VOUCHERNUMBER>{sale.InvoiceNumber}</VOUCHERNUMBER>");
+                    xml.AppendLine($"            <PARTYLEDGERNAME>{sale.CustomerName}</PARTYLEDGERNAME>");
+                    xml.AppendLine("            <ALLLEDGERENTRIES.LIST>");
+                    xml.AppendLine($"              <LEDGERNAME>Sales</LEDGERNAME>");
+                    xml.AppendLine($"              <AMOUNT>-{sale.TotalAmount:F2}</AMOUNT>");
+                    xml.AppendLine("            </ALLLEDGERENTRIES.LIST>");
+                    xml.AppendLine("          </VOUCHER>");
+                    xml.AppendLine("        </TALLYMESSAGE>");
+                }
+                
+                xml.AppendLine("      </REQUESTDATA>");
+                xml.AppendLine("    </IMPORTDATA>");
+                xml.AppendLine("  </BODY>");
+                xml.AppendLine("</ENVELOPE>");
+
+                string path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), $"Tally_Export_{DateTime.Now:yyyyMMdd}.xml");
+                await File.WriteAllTextAsync(path, xml.ToString());
+                StatusMessage = "Tally XML Exported to Desktop!";
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = "Tally Export Error: " + ex.Message;
+            }
+            finally
+            {
+                IsBusy = false;
             }
         }
     }

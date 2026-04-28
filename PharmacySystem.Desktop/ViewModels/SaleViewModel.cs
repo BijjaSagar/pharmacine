@@ -129,6 +129,14 @@ namespace PharmacySystem.Desktop.ViewModels
         private bool _sendWhatsAppReceipt = false;
         public bool SendWhatsAppReceipt { get => _sendWhatsAppReceipt; set => SetProperty(ref _sendWhatsAppReceipt, value); }
 
+        private int _availableRewardPoints;
+        public int AvailableRewardPoints { get => _availableRewardPoints; set => SetProperty(ref _availableRewardPoints, value); }
+
+        private bool _isRedeemingPoints;
+        public bool IsRedeemingPoints { get => _isRedeemingPoints; set => SetProperty(ref _isRedeemingPoints, value); }
+
+        public bool HasRewardPoints => AvailableRewardPoints > 0;
+
         public ConsoleState(int number)
         {
             ConsoleNumber = number;
@@ -141,6 +149,7 @@ namespace PharmacySystem.Desktop.ViewModels
             DiscountAmount = SubTotal * DiscountPercent / 100M;
             GrandTotal = SubTotal + TotalGst - DiscountAmount;
             ItemCount = CartItems.Count;
+            OnPropertyChanged(nameof(HasRewardPoints));
         }
 
         public void Clear()
@@ -254,6 +263,7 @@ namespace PharmacySystem.Desktop.ViewModels
         public ICommand ClearSearchCommand { get; }
         public ICommand SubstituteSearchCommand { get; }
         public ICommand AskCopilotCommand { get; }
+        public ICommand SplitHalfCommand { get; }
 
         public ICommand ConfirmPinCommand { get; }
         public ICommand CancelPinCommand { get; }
@@ -303,6 +313,10 @@ namespace PharmacySystem.Desktop.ViewModels
             SearchCommand = new RelayCommand(async _ => await SearchProductsAsync(false));
             SubstituteSearchCommand = new RelayCommand(async _ => await SearchProductsAsync(true));
             AskCopilotCommand = new RelayCommand(async _ => await AskCopilotAsync());
+            SplitHalfCommand = new RelayCommand(param =>
+            {
+                if (param is CartItem item) item.Quantity = 0.5M;
+            });
             ClearSearchCommand = new RelayCommand(_ =>
             {
                 SearchInput = string.Empty;
@@ -674,8 +688,22 @@ namespace PharmacySystem.Desktop.ViewModels
                 }
                 else
                 {
-                    // Trigger actual ESC/POS thermal printing
+                    // Check appsettings for printer type
+                    // For this demo, we'll try to use Dot Matrix if requested
+                    DotMatrixPrinterService.PrintInvoice(console, invoiceNo);
+                    
+                    // Thermal still works too
                     ThermalPrinterService.PrintReceipt(console, invoiceNo);
+                }
+
+                // ── LOYALTY POINTS EARNING ──
+                if (customerId.HasValue)
+                {
+                    int pointsEarned = (int)(console.GrandTotal / 100);
+                    await _dbService.ExecuteNonQueryAsync(
+                        "UPDATE customers SET reward_points = reward_points + @pts WHERE customer_id = @cid",
+                        new NpgsqlParameter("@pts", pointsEarned),
+                        new NpgsqlParameter("@cid", customerId.Value));
                 }
                 
                 console.Clear();

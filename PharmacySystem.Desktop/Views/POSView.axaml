@@ -236,13 +236,20 @@
                                             Binding="{Binding StockAvailable}"/>
                         <DataGridTextColumn Header="MRP" Width="90" IsReadOnly="True"
                                             Binding="{Binding Product.UnitPrice, StringFormat={}{0:F2}}"/>
-                        <DataGridTemplateColumn Header="Qty" Width="110">
+                        <DataGridTemplateColumn Header="Qty" Width="140">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
-                                    <NumericUpDown Value="{Binding Quantity}"
-                                                   Minimum="0.25" Increment="0.25"
-                                                   FontSize="14"
-                                                   Background="Transparent"/>
+                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                        <NumericUpDown Value="{Binding Quantity}"
+                                                       Minimum="0.25" Increment="0.25"
+                                                       FontSize="14" Width="90"
+                                                       Background="Transparent"/>
+                                        <Button Content="½" 
+                                                Command="{Binding $parent[DataGrid].DataContext.SplitHalfCommand}"
+                                                CommandParameter="{Binding}"
+                                                ToolTip.Tip="Split Half (Set Qty to 0.5)"
+                                                Background="#E2E8F0" Padding="4,0" Cursor="Hand"/>
+                                    </StackPanel>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
@@ -298,6 +305,10 @@
                             <TextBlock Grid.Column="1"
                                        Text="{Binding ActiveConsole.TotalGst, StringFormat='₹ {0:F2}'}"
                                        FontSize="15"/>
+                        </Grid>
+                        <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding ActiveConsole.HasRewardPoints}">
+                            <TextBlock Text="Loyalty Points Available" Foreground="#8B5CF6" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Grid.Column="1" Text="{Binding ActiveConsole.AvailableRewardPoints}" Foreground="#8B5CF6" FontSize="13" FontWeight="Bold"/>
                         </Grid>
                         <Grid ColumnDefinitions="*,Auto">
                             <TextBlock Text="{Binding ActiveConsole.DiscountPercent, StringFormat='Discount ({0}%)'}"
