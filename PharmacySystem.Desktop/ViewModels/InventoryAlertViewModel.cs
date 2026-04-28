@@ -5,6 +5,10 @@ using System.Windows.Input;
 using Npgsql;
 using PharmacySystem.Desktop.Helpers;
 using PharmacySystem.Desktop.Services;
+using QuestPDF.Fluent;
+using QuestPDF.Helpers;
+using QuestPDF.Infrastructure;
+using System.IO;
 
 namespace PharmacySystem.Desktop.ViewModels
 {
@@ -108,6 +112,7 @@ namespace PharmacySystem.Desktop.ViewModels
             Set30DaysCommand  = new RelayCommand(_ => ExpiryDays = 30);
             Set60DaysCommand  = new RelayCommand(_ => ExpiryDays = 60);
             GeneratePoCommand = new RelayCommand(async _ => await GeneratePurchaseOrderAsync());
+            QuestPDF.Settings.License = LicenseType.Community;
             _ = LoadAllAsync();
         }
 
@@ -301,26 +306,36 @@ namespace PharmacySystem.Desktop.ViewModels
                 // Group by supplier
                 var grouped = System.Linq.Enumerable.GroupBy(poList, x => string.IsNullOrWhiteSpace(x.Supplier) ? "Unknown Supplier" : x.Supplier);
 
-                string path = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), $"PurchaseOrder_{DateTime.Now:yyyyMMdd}.txt");
-                using var sw = new System.IO.StreamWriter(path);
-                
-                sw.WriteLine($"CLINICOS PHARMACY - PURCHASE ORDER");
-                sw.WriteLine($"Generated: {DateTime.Now:f}");
-                sw.WriteLine(new string('=', 50));
-                
-                foreach (var group in grouped)
+                string path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), $"PurchaseOrder_{DateTime.Now:yyyyMMdd_HHmmss}.pdf");
+
+                Document.Create(container =>
                 {
-                    sw.WriteLine($"\nSUPPLIER: {group.Key.ToUpper()}");
-                    sw.WriteLine(new string('-', 50));
-                    sw.WriteLine($"{"MEDICINE",-30} {"STOCK",8} {"REORDER",8}");
-                    
-                    foreach (var item in group)
+                    container.Page(page =>
                     {
-                        sw.WriteLine($"{item.MedicineName,-30} {item.StockQty,8:N0} {item.ReorderLevel,8:N0}");
-                    }
-                }
+                        page.Size(PageSizes.A4);
+                        page.Margin(2, Unit.Centimetre);
+                        page.PageColor(Colors.White);
+                        page.DefaultTextStyle(x => x.FontSize(11));
+
+                        page.Header().Element(ComposeHeader);
+                        page.Content().Element(c => ComposeContent(c, grouped));
+                        page.Footer().AlignCenter().Text(x =>
+                        {
+                            x.Span("Page ");
+                            x.CurrentPageNumber();
+                            x.Span(" of ");
+                            x.TotalPages();
+                        });
+                    });
+                }).GeneratePdf(path);
                 
-                LastRefreshed = $"PO saved to Desktop!";
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = path,
+                    UseShellExecute = true
+                });
+
+                LastRefreshed = $"PO PDF saved to Desktop!";
             }
             catch (Exception ex)
             {
@@ -330,6 +345,54 @@ namespace PharmacySystem.Desktop.ViewModels
             {
                 IsBusy = false;
             }
+        }
+
+        private void ComposeHeader(IContainer container)
+        {
+            container.Row(row =>
+            {
+                row.RelativeItem().Column(column =>
+                {
+                    column.Item().Text("PURCHASE ORDER").FontSize(24).SemiBold().FontColor(Colors.Blue.Darken2);
+                    column.Item().Text($"Generated: {DateTime.Now:f}").FontSize(12).FontColor(Colors.Grey.Medium);
+                });
+            });
+        }
+
+        private void ComposeContent(IContainer container, System.Collections.Generic.IEnumerable<System.Linq.IGrouping<string, StockAlertItem>> grouped)
+        {
+            container.PaddingVertical(1, Unit.Centimetre).Column(column =>
+            {
+                foreach (var group in grouped)
+                {
+                    column.Item().PaddingTop(10).Text(group.Key.ToUpper()).FontSize(14).SemiBold().FontColor(Colors.Green.Darken2);
+                    
+                    column.Item().Table(table =>
+                    {
+                        table.ColumnsDefinition(columns =>
+                        {
+                            columns.RelativeColumn(3);
+                            columns.RelativeColumn(1);
+                            columns.RelativeColumn(1);
+                        });
+
+                        table.Header(header =>
+                        {
+                            header.Cell().Text("MEDICINE").SemiBold();
+                            header.Cell().AlignRight().Text("IN STOCK").SemiBold();
+                            header.Cell().AlignRight().Text("REORDER LEVEL").SemiBold();
+                            header.Cell().ColumnSpan(3).PaddingVertical(5).BorderBottom(1).BorderColor(Colors.Grey.Lighten2);
+                        });
+
+                        foreach (var item in group)
+                        {
+                            table.Cell().Text(item.MedicineName);
+                            table.Cell().AlignRight().Text(item.StockQty.ToString("N0")).FontColor(item.StockQty <= 0 ? Colors.Red.Medium : Colors.Black);
+                            table.Cell().AlignRight().Text(item.ReorderLevel.ToString("N0"));
+                        }
+                    });
+                }
+            });
         }
     }
 }

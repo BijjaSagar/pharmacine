@@ -1,7 +1,11 @@
+using LiveChartsCore;
+using LiveChartsCore.SkiaSharpView;
 using PharmacySystem.Desktop.Helpers;
 using PharmacySystem.Desktop.Views;
 using System;
+using System.Collections.Generic;
 using System.Windows.Input;
+using System.Threading.Tasks;
 
 namespace PharmacySystem.Desktop.ViewModels
 {
@@ -20,9 +24,9 @@ namespace PharmacySystem.Desktop.ViewModels
         public ICommand OpenReportsCommand { get; }
         public ICommand OpenInventoryAlertsCommand { get; }
 
-        public bool IsAdmin => Helpers.AppSession.IsAdmin;
+        public bool IsOwner => Helpers.AppSession.IsOwner;
         public bool IsManager => Helpers.AppSession.IsManager;
-        public bool IsAdminOrManager => IsAdmin || IsManager;
+        public bool IsOwnerOrManager => IsOwner || IsManager;
 
         private string _todaySales = "₹ 0.00";
         public string TodaySales { get => _todaySales; set => SetProperty(ref _todaySales, value); }
@@ -41,6 +45,12 @@ namespace PharmacySystem.Desktop.ViewModels
 
         private string _expiredItems = "0";
         public string ExpiredItems { get => _expiredItems; set => SetProperty(ref _expiredItems, value); }
+
+        private ISeries[] _salesSeries;
+        public ISeries[] SalesSeries { get => _salesSeries; set => SetProperty(ref _salesSeries, value); }
+
+        private Axis[] _xAxes;
+        public Axis[] XAxes { get => _xAxes; set => SetProperty(ref _xAxes, value); }
 
         private readonly Services.DatabaseService _dbService;
 
@@ -92,6 +102,50 @@ namespace PharmacySystem.Desktop.ViewModels
                 var expiredSql = "SELECT COUNT(*) FROM batches WHERE expiry_date < CURRENT_DATE AND quantity > 0";
                 var expiredObj = await _dbService.ExecuteScalarAsync(expiredSql);
                 ExpiredItems = expiredObj?.ToString() ?? "0";
+
+                // Generate Chart Data for the last 7 days
+                var chartSql = @"
+                    WITH dates AS (
+                        SELECT generate_series(CURRENT_DATE - INTERVAL '6 days', CURRENT_DATE, '1 day')::date AS date
+                    )
+                    SELECT d.date, COALESCE(SUM(s.grand_total), 0) as total
+                    FROM dates d
+                    LEFT JOIN sales s ON DATE(s.sale_date) = d.date
+                    GROUP BY d.date
+                    ORDER BY d.date;
+                ";
+                var chartDt = await _dbService.ExecuteQueryAsync(chartSql);
+                
+                var values = new List<double>();
+                var labels = new List<string>();
+
+                foreach (System.Data.DataRow row in chartDt.Rows)
+                {
+                    labels.Add(Convert.ToDateTime(row["date"]).ToString("dd MMM"));
+                    values.Add(Convert.ToDouble(row["total"]));
+                }
+
+                SalesSeries = new ISeries[]
+                {
+                    new LineSeries<double>
+                    {
+                        Values = values,
+                        Fill = null,
+                        Name = "Daily Sales (₹)",
+                        GeometrySize = 10,
+                        LineSmoothness = 0.5
+                    }
+                };
+
+                XAxes = new Axis[]
+                {
+                    new Axis
+                    {
+                        Labels = labels,
+                        Name = "Date",
+                        LabelsRotation = 15
+                    }
+                };
             }
             catch (Exception ex)
             {

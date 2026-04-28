@@ -81,10 +81,12 @@ namespace PharmacySystem.Desktop.Services
                 
                 var bytes = ms.ToArray();
 
-                // Send to Raw Printer via system API or file port (fallback for demo)
-                // If actual network printer: Socket.Send(bytes)
-                // We'll write to a raw generic spooler using Windows API or simply drop it to a file
-                // For cross-platform dev/demo purposes, we log it, or save to "receipt.bin"
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                {
+                    // Send to Raw Printer spooler
+                    RawPrinterHelper.SendBytesToPrinter(printerName, bytes);
+                }
+                
                 File.WriteAllBytes("last_receipt.bin", bytes);
                 System.Console.WriteLine($"[ThermalPrinter] Receipt {invoiceNo} sent to {printerName}. ({bytes.Length} bytes)");
             }
@@ -92,6 +94,80 @@ namespace PharmacySystem.Desktop.Services
             {
                 System.Console.WriteLine("Print Error: " + ex.Message);
             }
+        }
+    }
+
+    public static class RawPrinterHelper
+    {
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+        public class DOCINFOA
+        {
+            [MarshalAs(UnmanagedType.LPStr)] public string pDocName;
+            [MarshalAs(UnmanagedType.LPStr)] public string pOutputFile;
+            [MarshalAs(UnmanagedType.LPStr)] public string pDataType;
+        }
+
+        [DllImport("winspool.Drv", EntryPoint = "OpenPrinterA", SetLastError = true, CharSet = CharSet.Ansi, ExactSpelling = true, CallingConvention = CallingConvention.StdCall)]
+        public static extern bool OpenPrinter([MarshalAs(UnmanagedType.LPStr)] string szPrinter, out IntPtr hPrinter, IntPtr pd);
+
+        [DllImport("winspool.Drv", EntryPoint = "ClosePrinter", SetLastError = true, ExactSpelling = true, CallingConvention = CallingConvention.StdCall)]
+        public static extern bool ClosePrinter(IntPtr hPrinter);
+
+        [DllImport("winspool.Drv", EntryPoint = "StartDocPrinterA", SetLastError = true, CharSet = CharSet.Ansi, ExactSpelling = true, CallingConvention = CallingConvention.StdCall)]
+        public static extern bool StartDocPrinter(IntPtr hPrinter, int level, [In, MarshalAs(UnmanagedType.LPStruct)] DOCINFOA di);
+
+        [DllImport("winspool.Drv", EntryPoint = "EndDocPrinter", SetLastError = true, ExactSpelling = true, CallingConvention = CallingConvention.StdCall)]
+        public static extern bool EndDocPrinter(IntPtr hPrinter);
+
+        [DllImport("winspool.Drv", EntryPoint = "StartPagePrinter", SetLastError = true, ExactSpelling = true, CallingConvention = CallingConvention.StdCall)]
+        public static extern bool StartPagePrinter(IntPtr hPrinter);
+
+        [DllImport("winspool.Drv", EntryPoint = "EndPagePrinter", SetLastError = true, ExactSpelling = true, CallingConvention = CallingConvention.StdCall)]
+        public static extern bool EndPagePrinter(IntPtr hPrinter);
+
+        [DllImport("winspool.Drv", EntryPoint = "WritePrinter", SetLastError = true, ExactSpelling = true, CallingConvention = CallingConvention.StdCall)]
+        public static extern bool WritePrinter(IntPtr hPrinter, IntPtr pBytes, int dwCount, out int dwWritten);
+
+        public static bool SendBytesToPrinter(string szPrinterName, byte[] data)
+        {
+            if (data == null || data.Length == 0) return false;
+
+            IntPtr pUnmanagedBytes = Marshal.AllocCoTaskMem(data.Length);
+            Marshal.Copy(data, 0, pUnmanagedBytes, data.Length);
+            bool success = SendBytesToPrinter(szPrinterName, pUnmanagedBytes, data.Length);
+            Marshal.FreeCoTaskMem(pUnmanagedBytes);
+            return success;
+        }
+
+        private static bool SendBytesToPrinter(string szPrinterName, IntPtr pBytes, int dwCount)
+        {
+            int dwError = 0, dwWritten = 0;
+            IntPtr hPrinter = new IntPtr(0);
+            DOCINFOA di = new DOCINFOA();
+            bool bSuccess = false; 
+
+            di.pDocName = "ClinicOS Receipt";
+            di.pDataType = "RAW";
+
+            if (OpenPrinter(szPrinterName.Normalize(), out hPrinter, IntPtr.Zero))
+            {
+                if (StartDocPrinter(hPrinter, 1, di))
+                {
+                    if (StartPagePrinter(hPrinter))
+                    {
+                        bSuccess = WritePrinter(hPrinter, pBytes, dwCount, out dwWritten);
+                        EndPagePrinter(hPrinter);
+                    }
+                    EndDocPrinter(hPrinter);
+                }
+                ClosePrinter(hPrinter);
+            }
+
+            if (bSuccess == false)
+            {
+                dwError = Marshal.GetLastWin32Error();
+            }
+            return bSuccess;
         }
     }
 }

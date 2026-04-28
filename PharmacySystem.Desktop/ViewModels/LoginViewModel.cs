@@ -41,12 +41,66 @@ namespace PharmacySystem.Desktop.ViewModels
             set => SetProperty(ref _isBusy, value);
         }
 
+        private bool _isLoginVisible = true;
+        public bool IsLoginVisible { get => _isLoginVisible; set => SetProperty(ref _isLoginVisible, value); }
+
+        private bool _isLicenseInputVisible;
+        public bool IsLicenseInputVisible { get => _isLicenseInputVisible; set => SetProperty(ref _isLicenseInputVisible, value); }
+
+        private string _licenseKeyInput = string.Empty;
+        public string LicenseKeyInput { get => _licenseKeyInput; set => SetProperty(ref _licenseKeyInput, value); }
+
+        private string _hardwareId = string.Empty;
+        public string HardwareId { get => _hardwareId; set => SetProperty(ref _hardwareId, value); }
+
+        private string _licenseStatus = string.Empty;
+        public string LicenseStatus { get => _licenseStatus; set => SetProperty(ref _licenseStatus, value); }
+
         public ICommand LoginCommand { get; }
+        public ICommand ActivateCommand { get; }
 
         public LoginViewModel()
         {
             _dbService = new DatabaseService();
             LoginCommand = new RelayCommand(async _ => await LoginAsync(), _ => !IsBusy);
+            ActivateCommand = new RelayCommand(_ => ActivateLicense());
+            CheckLicense();
+        }
+
+        private void CheckLicense()
+        {
+            HardwareId = LicenseManager.GetHardwareId();
+            if (LicenseManager.IsLicenseValid(out string msg))
+            {
+                LicenseStatus = msg;
+                IsLoginVisible = true;
+                IsLicenseInputVisible = false;
+            }
+            else
+            {
+                LicenseStatus = msg;
+                IsLoginVisible = false;
+                IsLicenseInputVisible = true;
+            }
+        }
+
+        private void ActivateLicense()
+        {
+            if (string.IsNullOrWhiteSpace(LicenseKeyInput))
+            {
+                ErrorMessage = "Please enter a valid key.";
+                return;
+            }
+
+            if (LicenseManager.ActivateLicense(LicenseKeyInput))
+            {
+                ErrorMessage = "License activated successfully!";
+                CheckLicense();
+            }
+            else
+            {
+                ErrorMessage = "Invalid or expired key. Please verify hardware ID.";
+            }
         }
 
         private async Task LoginAsync()

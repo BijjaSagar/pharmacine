@@ -185,7 +185,12 @@
                                                     </Border>
                                                 </StackPanel>
                                                 <TextBlock Text="{Binding GenericName}" FontSize="11" Foreground="#64748B"/>
-                                                <TextBlock Text="{Binding Category}" FontSize="11" Foreground="#94A3B8"/>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="{Binding Category}" FontSize="11" Foreground="#94A3B8"/>
+                                                    <Border Background="#F1F5F9" CornerRadius="4" Padding="4,1" Margin="6,0,0,0">
+                                                        <TextBlock Text="{Binding ShelfLocation, StringFormat='📍 {0}'}" FontSize="10" FontWeight="SemiBold" Foreground="#475569"/>
+                                                    </Border>
+                                                </StackPanel>
                                             </StackPanel>
                                             <StackPanel Grid.Column="1" Margin="20,0" HorizontalAlignment="Right">
                                                 <TextBlock Text="{Binding PriceDisplay}" FontSize="14" FontWeight="Bold" Foreground="#10B981"/>
@@ -225,6 +230,8 @@
                                             Binding="{Binding Product.Name}"/>
                         <DataGridTextColumn Header="Batch" Width="100" IsReadOnly="True"
                                             Binding="{Binding BatchNumber}"/>
+                        <DataGridTextColumn Header="Shelf" Width="80" IsReadOnly="True"
+                                            Binding="{Binding Product.ShelfLocation}"/>
                         <DataGridTextColumn Header="Stock" Width="70" IsReadOnly="True"
                                             Binding="{Binding StockAvailable}"/>
                         <DataGridTextColumn Header="MRP" Width="90" IsReadOnly="True"
@@ -318,6 +325,18 @@
                             <TextBlock Text="Payment Mode:" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"/>
                             <ComboBox Grid.Column="1" Width="100" SelectedItem="{Binding ActiveConsole.PaymentMode}" ItemsSource="{Binding ActiveConsole.PaymentModes}" />
                         </Grid>
+
+                        <!-- WhatsApp & Refills -->
+                        <Border Background="#F0FDF4" CornerRadius="6" Padding="10">
+                            <StackPanel Spacing="6">
+                                <CheckBox IsChecked="{Binding ActiveConsole.IsChronicPatient}" Content="Set Refill Reminder (Chronic)" FontSize="13" Foreground="#15803D" FontWeight="SemiBold"/>
+                                <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding ActiveConsole.IsChronicPatient}" Margin="20,0,0,0">
+                                    <TextBlock Text="Supply Days:" VerticalAlignment="Center" FontSize="12" Foreground="#166534"/>
+                                    <NumericUpDown Grid.Column="1" Value="{Binding ActiveConsole.SupplyDays}" Minimum="1" Maximum="180" Width="90" Height="25" FontSize="12"/>
+                                </Grid>
+                                <CheckBox IsChecked="{Binding ActiveConsole.SendWhatsAppReceipt}" Content="Send WhatsApp Receipt" FontSize="13" Foreground="#15803D" FontWeight="SemiBold"/>
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
 
                     <!-- Action Buttons -->
@@ -367,6 +386,23 @@
                            Foreground="#64748B" FontSize="12" VerticalAlignment="Center">
                 </TextBlock>
             </Grid>
+        </Border>
+
+        <!-- PIN OVERLAY -->
+        <Border Grid.Row="0" Grid.RowSpan="4" Background="#80000000" IsVisible="{Binding IsPinRequested}">
+            <Border Background="White" CornerRadius="8" Padding="20" HorizontalAlignment="Center" VerticalAlignment="Center" Width="300" BoxShadow="0 4 10 0 #40000000">
+                <StackPanel>
+                    <TextBlock Text="Manager Override Required" FontSize="16" FontWeight="Bold" Foreground="#DC2626" Margin="0,0,0,15" HorizontalAlignment="Center" />
+                    
+                    <TextBlock Text="Enter Owner/Manager PIN to proceed:" FontSize="13" Foreground="#475569" Margin="0,0,0,5" />
+                    <TextBox Text="{Binding EnteredPin}" PasswordChar="*" FontSize="20" HorizontalContentAlignment="Center" Margin="0,0,0,20" MaxLength="4" />
+
+                    <Grid ColumnDefinitions="*,*">
+                        <Button Grid.Column="0" Content="CANCEL" Command="{Binding CancelPinCommand}" Background="#E2E8F0" Foreground="#475569" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="0,0,5,0" Cursor="Hand" />
+                        <Button Grid.Column="1" Content="AUTHORIZE" Command="{Binding ConfirmPinCommand}" Background="#DC2626" Foreground="White" FontWeight="Bold" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="5,0,0,0" Cursor="Hand" />
+                    </Grid>
+                </StackPanel>
+            </Border>
         </Border>
 
     </Grid>

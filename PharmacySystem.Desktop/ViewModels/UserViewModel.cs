@@ -27,6 +27,7 @@ namespace PharmacySystem.Desktop.ViewModels
                 {
                     Username = value.Username;
                     Role = value.Role;
+                    OverridePin = value.OverridePin;
                     IsActive = value.IsActive;
                 }
             }
@@ -46,11 +47,18 @@ namespace PharmacySystem.Desktop.ViewModels
             set => SetProperty(ref _password, value);
         }
 
-        private string _role = "Biller";
+        private string _role = "Cashier";
         public string Role
         {
             get => _role;
             set => SetProperty(ref _role, value);
+        }
+
+        private string _overridePin = "0000";
+        public string OverridePin
+        {
+            get => _overridePin;
+            set => SetProperty(ref _overridePin, value);
         }
 
         private bool _isActive = true;
@@ -60,7 +68,7 @@ namespace PharmacySystem.Desktop.ViewModels
             set => SetProperty(ref _isActive, value);
         }
         
-        public ObservableCollection<string> Roles { get; } = new() { "Admin", "Manager", "Biller" };
+        public ObservableCollection<string> Roles { get; } = new() { "Owner", "Manager", "Cashier" };
 
         private string _errorMessage = string.Empty;
         public string ErrorMessage
@@ -95,14 +103,15 @@ namespace PharmacySystem.Desktop.ViewModels
 
             try
             {
-                var dt = await _dbService.ExecuteQueryAsync("SELECT user_id, username, role, is_active FROM users ORDER BY username");
+                var dt = await _dbService.ExecuteQueryAsync("SELECT user_id, username, role, override_pin, is_active FROM users ORDER BY username");
                 foreach (System.Data.DataRow row in dt.Rows)
                 {
                     Users.Add(new User
                     {
                         UserId = Convert.ToInt32(row["user_id"]),
                         Username = row["username"].ToString() ?? "",
-                        Role = row["role"].ToString() ?? "",
+                        Role = row["role"].ToString() ?? "Cashier",
+                        OverridePin = row["override_pin"]?.ToString() ?? "0000",
                         IsActive = Convert.ToBoolean(row["is_active"])
                     });
                 }
@@ -138,11 +147,12 @@ namespace PharmacySystem.Desktop.ViewModels
                         return;
                     }
                     
-                    var sql = "INSERT INTO users (username, password_hash, role, is_active) VALUES (@un, @pw, @role, @act)";
+                    var sql = "INSERT INTO users (username, password_hash, role, override_pin, is_active) VALUES (@un, @pw, @role, @pin, @act)";
                     await _dbService.ExecuteNonQueryAsync(sql,
                         new NpgsqlParameter("@un", Username),
                         new NpgsqlParameter("@pw", Password), // Note: Hash in prod
                         new NpgsqlParameter("@role", Role),
+                        new NpgsqlParameter("@pin", OverridePin),
                         new NpgsqlParameter("@act", IsActive));
                 }
                 else
@@ -150,20 +160,22 @@ namespace PharmacySystem.Desktop.ViewModels
                     // Update
                     if (!string.IsNullOrWhiteSpace(Password))
                     {
-                        var sql = "UPDATE users SET username = @un, password_hash = @pw, role = @role, is_active = @act WHERE user_id = @id";
+                        var sql = "UPDATE users SET username = @un, password_hash = @pw, role = @role, override_pin = @pin, is_active = @act WHERE user_id = @id";
                         await _dbService.ExecuteNonQueryAsync(sql,
                             new NpgsqlParameter("@un", Username),
                             new NpgsqlParameter("@pw", Password),
                             new NpgsqlParameter("@role", Role),
+                            new NpgsqlParameter("@pin", OverridePin),
                             new NpgsqlParameter("@act", IsActive),
                             new NpgsqlParameter("@id", SelectedUser.UserId));
                     }
                     else
                     {
-                        var sql = "UPDATE users SET username = @un, role = @role, is_active = @act WHERE user_id = @id";
+                        var sql = "UPDATE users SET username = @un, role = @role, override_pin = @pin, is_active = @act WHERE user_id = @id";
                         await _dbService.ExecuteNonQueryAsync(sql,
                             new NpgsqlParameter("@un", Username),
                             new NpgsqlParameter("@role", Role),
+                            new NpgsqlParameter("@pin", OverridePin),
                             new NpgsqlParameter("@act", IsActive),
                             new NpgsqlParameter("@id", SelectedUser.UserId));
                     }
@@ -187,7 +199,8 @@ namespace PharmacySystem.Desktop.ViewModels
             SelectedUser = null;
             Username = string.Empty;
             Password = string.Empty;
-            Role = "Biller";
+            Role = "Cashier";
+            OverridePin = "0000";
             IsActive = true;
             ErrorMessage = string.Empty;
         }

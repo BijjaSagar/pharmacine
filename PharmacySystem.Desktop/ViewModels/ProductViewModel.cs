@@ -66,6 +66,8 @@ namespace PharmacySystem.Desktop.ViewModels
                         UnitPrice = Convert.ToDecimal(row["unit_price"]),
                         GstPercent = Convert.ToDecimal(row["gst_percent"]),
                         IsPrescriptionRequired = Convert.ToBoolean(row["is_prescription_required"]),
+                        IsScheduleH1 = row["is_schedule_h1"] != DBNull.Value && Convert.ToBoolean(row["is_schedule_h1"]),
+                        ShelfLocation = row["shelf_location"]?.ToString() ?? "Store",
                         IsActive = Convert.ToBoolean(row["is_active"])
                     });
                 }
@@ -93,8 +95,8 @@ namespace PharmacySystem.Desktop.ViewModels
             {
                 if (SelectedProduct.ProductId == 0)
                 {
-                    var sql = @"INSERT INTO products (barcode, name, generic_name, pack_size, reorder_level, unit_price, gst_percent, is_prescription_required, is_active) 
-                                VALUES (@bc, @name, @gn, @ps, @rl, @up, @gst, @pr, @ia)";
+                    var sql = @"INSERT INTO products (barcode, name, generic_name, pack_size, reorder_level, unit_price, gst_percent, is_prescription_required, is_schedule_h1, shelf_location, is_active) 
+                                VALUES (@bc, @name, @gn, @ps, @rl, @up, @gst, @pr, @h1, @sl, @ia)";
                     await _dbService.ExecuteNonQueryAsync(sql,
                         new NpgsqlParameter("@bc", SelectedProduct.Barcode),
                         new NpgsqlParameter("@name", SelectedProduct.Name),
@@ -104,12 +106,14 @@ namespace PharmacySystem.Desktop.ViewModels
                         new NpgsqlParameter("@up", SelectedProduct.UnitPrice),
                         new NpgsqlParameter("@gst", SelectedProduct.GstPercent),
                         new NpgsqlParameter("@pr", SelectedProduct.IsPrescriptionRequired),
+                        new NpgsqlParameter("@h1", SelectedProduct.IsScheduleH1),
+                        new NpgsqlParameter("@sl", SelectedProduct.ShelfLocation),
                         new NpgsqlParameter("@ia", SelectedProduct.IsActive));
                 }
                 else
                 {
                     var sql = @"UPDATE products SET barcode=@bc, name=@name, generic_name=@gn, pack_size=@ps, reorder_level=@rl, 
-                                unit_price=@up, gst_percent=@gst, is_prescription_required=@pr, is_active=@ia, last_modified=CURRENT_TIMESTAMP 
+                                unit_price=@up, gst_percent=@gst, is_prescription_required=@pr, is_schedule_h1=@h1, shelf_location=@sl, is_active=@ia, last_modified=CURRENT_TIMESTAMP 
                                 WHERE product_id=@id";
                     await _dbService.ExecuteNonQueryAsync(sql,
                         new NpgsqlParameter("@id", SelectedProduct.ProductId),
@@ -121,6 +125,8 @@ namespace PharmacySystem.Desktop.ViewModels
                         new NpgsqlParameter("@up", SelectedProduct.UnitPrice),
                         new NpgsqlParameter("@gst", SelectedProduct.GstPercent),
                         new NpgsqlParameter("@pr", SelectedProduct.IsPrescriptionRequired),
+                        new NpgsqlParameter("@h1", SelectedProduct.IsScheduleH1),
+                        new NpgsqlParameter("@sl", SelectedProduct.ShelfLocation),
                         new NpgsqlParameter("@ia", SelectedProduct.IsActive));
                 }
                 

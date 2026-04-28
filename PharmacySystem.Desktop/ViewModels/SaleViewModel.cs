@@ -53,6 +53,7 @@ namespace PharmacySystem.Desktop.ViewModels
         public string BatchNumber { get; set; } = string.Empty;
         public decimal StockAvailable { get; set; }
         public DateTime ExpiryDate { get; set; }
+        public string ShelfLocation { get; set; } = string.Empty;
         public string StockDisplay => $"Stock: {StockAvailable}  |  Exp: {ExpiryDate:MMM-yy}";
         public string PriceDisplay => $"₹ {Mrp:F2}";
     }
@@ -110,6 +111,15 @@ namespace PharmacySystem.Desktop.ViewModels
         private int _itemCount;
         public int ItemCount { get => _itemCount; set => SetProperty(ref _itemCount, value); }
 
+        private bool _isChronicPatient;
+        public bool IsChronicPatient { get => _isChronicPatient; set => SetProperty(ref _isChronicPatient, value); }
+
+        private int _supplyDays = 30;
+        public int SupplyDays { get => _supplyDays; set => SetProperty(ref _supplyDays, value); }
+
+        private bool _sendWhatsAppReceipt = false;
+        public bool SendWhatsAppReceipt { get => _sendWhatsAppReceipt; set => SetProperty(ref _sendWhatsAppReceipt, value); }
+
         public ConsoleState(int number)
         {
             ConsoleNumber = number;
@@ -133,6 +143,9 @@ namespace PharmacySystem.Desktop.ViewModels
             PatientAddress = string.Empty;
             PaymentMode = "Cash";
             DiscountPercent = 0;
+            IsChronicPatient = false;
+            SupplyDays = 30;
+            SendWhatsAppReceipt = false;
             RecalcTotals();
         }
     }
@@ -205,6 +218,22 @@ namespace PharmacySystem.Desktop.ViewModels
             set => SetProperty(ref _isBusy, value);
         }
 
+        private bool _isPinRequested;
+        public bool IsPinRequested
+        {
+            get => _isPinRequested;
+            set => SetProperty(ref _isPinRequested, value);
+        }
+
+        private string _enteredPin = string.Empty;
+        public string EnteredPin
+        {
+            get => _enteredPin;
+            set => SetProperty(ref _enteredPin, value);
+        }
+
+        private Action? _pendingAuthAction;
+
         // --- Commands ---
         public ICommand SwitchConsoleCommand { get; }
         public ICommand AddToCartCommand { get; }
@@ -214,6 +243,9 @@ namespace PharmacySystem.Desktop.ViewModels
         public ICommand SearchCommand { get; }
         public ICommand ClearSearchCommand { get; }
         public ICommand SubstituteSearchCommand { get; }
+
+        public ICommand ConfirmPinCommand { get; }
+        public ICommand CancelPinCommand { get; }
 
         public SaleViewModel()
         {
@@ -236,13 +268,26 @@ namespace PharmacySystem.Desktop.ViewModels
             {
                 if (item is CartItem ci)
                 {
-                    ActiveConsole.CartItems.Remove(ci);
-                    ActiveConsole.RecalcTotals();
+                    RequireAuthorization(() =>
+                    {
+                        ActiveConsole.CartItems.Remove(ci);
+                        ActiveConsole.RecalcTotals();
+                    });
                 }
             });
 
             CheckoutCommand = new RelayCommand(async _ => await CheckoutAsync());
-            CancelBillCommand = new RelayCommand(_ => ActiveConsole.Clear());
+            CancelBillCommand = new RelayCommand(_ => 
+            {
+                if (ActiveConsole.CartItems.Count > 0)
+                {
+                    RequireAuthorization(() => ActiveConsole.Clear());
+                }
+                else
+                {
+                    ActiveConsole.Clear();
+                }
+            });
             SearchCommand = new RelayCommand(async _ => await SearchProductsAsync(false));
             SubstituteSearchCommand = new RelayCommand(async _ => await SearchProductsAsync(true));
             ClearSearchCommand = new RelayCommand(_ =>
@@ -251,6 +296,50 @@ namespace PharmacySystem.Desktop.ViewModels
                 SearchResults.Clear();
                 IsSearchVisible = false;
             });
+
+            ConfirmPinCommand = new RelayCommand(async _ => await AuthorizePinAsync());
+            CancelPinCommand = new RelayCommand(_ => 
+            {
+                IsPinRequested = false;
+                EnteredPin = string.Empty;
+                _pendingAuthAction = null;
+            });
+        }
+
+        private void RequireAuthorization(Action action)
+        {
+            if (Helpers.AppSession.IsOwnerOrManager)
+            {
+                action.Invoke();
+            }
+            else
+            {
+                _pendingAuthAction = action;
+                EnteredPin = string.Empty;
+                IsPinRequested = true;
+            }
+        }
+
+        private async Task AuthorizePinAsync()
+        {
+            if (string.IsNullOrWhiteSpace(EnteredPin)) return;
+
+            // Verify pin against owners and managers
+            var sql = "SELECT COUNT(*) FROM users WHERE role IN ('Owner', 'Manager') AND override_pin = @pin AND is_active = true";
+            var count = Convert.ToInt32(await _dbService.ExecuteScalarAsync(sql, new NpgsqlParameter("@pin", EnteredPin)));
+
+            if (count > 0)
+            {
+                IsPinRequested = false;
+                EnteredPin = string.Empty;
+                _pendingAuthAction?.Invoke();
+                _pendingAuthAction = null;
+            }
+            else
+            {
+                StatusMessage = "Invalid Override PIN.";
+                EnteredPin = string.Empty;
+            }
         }
 
         private async Task SearchProductsAsync(bool substituteSearch = false)
@@ -264,9 +353,26 @@ namespace PharmacySystem.Desktop.ViewModels
 
             try
             {
+                string queryStr = SearchInput;
+                if (substituteSearch)
+                {
+                    // Find the generic name for the currently typed brand
+                    var genericSql = "SELECT generic_name FROM products WHERE name ILIKE @q OR barcode ILIKE @q LIMIT 1";
+                    var genDt = await _dbService.ExecuteQueryAsync(genericSql, new NpgsqlParameter("@q", $"%{SearchInput}%"));
+                    if (genDt.Rows.Count > 0)
+                    {
+                        var gn = genDt.Rows[0]["generic_name"].ToString();
+                        if (!string.IsNullOrWhiteSpace(gn))
+                        {
+                            queryStr = gn; // Replace search string with the actual salt
+                            StatusMessage = $"Showing substitutes for salt: {gn}";
+                        }
+                    }
+                }
+
                 // Search by name OR barcode; show stock and nearest expiry batch
                 var sql = @"
-                    SELECT p.product_id, p.name, p.generic_name, p.barcode, p.category, p.mrp, p.is_schedule_h1,
+                    SELECT p.product_id, p.name, p.generic_name, p.barcode, p.category, p.mrp, p.is_schedule_h1, p.shelf_location,
                            b.batch_id, b.batch_number, b.quantity, b.expiry_date
                     FROM products p
                     LEFT JOIN LATERAL (
@@ -281,7 +387,7 @@ namespace PharmacySystem.Desktop.ViewModels
                     LIMIT 20";
 
                 var dt = await _dbService.ExecuteQueryAsync(sql,
-                    new NpgsqlParameter("@q", $"%{SearchInput}%"),
+                    new NpgsqlParameter("@q", $"%{queryStr}%"),
                     new NpgsqlParameter("@isSub", substituteSearch));
 
                 SearchResults.Clear();
@@ -299,7 +405,8 @@ namespace PharmacySystem.Desktop.ViewModels
                         BatchId = row["batch_id"] != DBNull.Value ? Convert.ToInt32(row["batch_id"]) : 0,
                         BatchNumber = row["batch_number"]?.ToString() ?? "N/A",
                         StockAvailable = row["quantity"] != DBNull.Value ? Convert.ToDecimal(row["quantity"]) : 0,
-                        ExpiryDate = row["expiry_date"] != DBNull.Value ? Convert.ToDateTime(row["expiry_date"]) : DateTime.MaxValue
+                        ExpiryDate = row["expiry_date"] != DBNull.Value ? Convert.ToDateTime(row["expiry_date"]) : DateTime.MaxValue,
+                        ShelfLocation = row["shelf_location"]?.ToString() ?? "Store"
                     });
                 }
 
@@ -339,7 +446,8 @@ namespace PharmacySystem.Desktop.ViewModels
                     Name = row["name"].ToString() ?? "",
                     UnitPrice = row["unit_price"] != DBNull.Value ? Convert.ToDecimal(row["unit_price"]) : SelectedSearchResult.Mrp,
                     GstPercent = row["gst_percent"] != DBNull.Value ? Convert.ToDecimal(row["gst_percent"]) : 0,
-                    IsScheduleH1 = row["is_schedule_h1"] != DBNull.Value && Convert.ToBoolean(row["is_schedule_h1"])
+                    IsScheduleH1 = row["is_schedule_h1"] != DBNull.Value && Convert.ToBoolean(row["is_schedule_h1"]),
+                    ShelfLocation = row["shelf_location"].ToString() ?? "Store"
                 };
 
                 // ── 2. FIFO ENFORCEMENT ──────────────────────────────────────────
@@ -463,8 +571,8 @@ namespace PharmacySystem.Desktop.ViewModels
 
                 string saleSql = @"INSERT INTO sales 
                     (invoice_no, customer_id, customer_name, customer_phone, doctor_name, patient_address,
-                     subtotal, taxable_amount, total_gst, cgst, sgst, discount_amount, grand_total, total_amount, payment_mode, user_id) 
-                    VALUES (@inv, @cid, @cust, @phone, @doc, @addr, @sub, @sub, @gst, @gst/2, @gst/2, @disc, @grand, @grand, @pmode, @uid) 
+                     subtotal, taxable_amount, total_gst, cgst, sgst, discount_amount, grand_total, total_amount, payment_mode, user_id, is_chronic, refill_due_date) 
+                    VALUES (@inv, @cid, @cust, @phone, @doc, @addr, @sub, @sub, @gst, @gst/2, @gst/2, @disc, @grand, @grand, @pmode, @uid, @chronic, @refill) 
                     RETURNING sale_id";
 
                 var saleIdObj = await _dbService.ExecuteScalarAsync(saleSql,
@@ -479,7 +587,9 @@ namespace PharmacySystem.Desktop.ViewModels
                     new NpgsqlParameter("@disc", console.DiscountAmount),
                     new NpgsqlParameter("@grand", console.GrandTotal),
                     new NpgsqlParameter("@pmode", console.PaymentMode),
-                    new NpgsqlParameter("@uid", AppSession.UserId));
+                    new NpgsqlParameter("@uid", AppSession.UserId),
+                    new NpgsqlParameter("@chronic", console.IsChronicPatient),
+                    new NpgsqlParameter("@refill", console.IsChronicPatient ? (object)DateTime.Now.Date.AddDays(console.SupplyDays - 2) : DBNull.Value));
 
                 int saleId = Convert.ToInt32(saleIdObj);
 
@@ -503,8 +613,33 @@ namespace PharmacySystem.Desktop.ViewModels
                     }
                 }
 
-                // Trigger actual ESC/POS thermal printing
-                ThermalPrinterService.PrintReceipt(console, invoiceNo);
+                if (console.PaymentMode == "Credit" && customerId.HasValue)
+                {
+                    string ledgerSql = @"
+                        INSERT INTO customer_ledger (customer_id, sale_id, transaction_type, amount, notes)
+                        VALUES (@cid, @sid, 'CREDIT', @amt, 'Credit Sale')";
+                    await _dbService.ExecuteNonQueryAsync(ledgerSql,
+                        new NpgsqlParameter("@cid", customerId.Value),
+                        new NpgsqlParameter("@sid", saleId),
+                        new NpgsqlParameter("@amt", console.GrandTotal));
+                }
+
+                if (console.SendWhatsAppReceipt && !string.IsNullOrWhiteSpace(console.CustomerPhone))
+                {
+                    string message = $"Hello {console.CustomerName},\nThank you for visiting ClinicOS Pharmacy!\nYour Bill {invoiceNo} for Rs.{console.GrandTotal} has been paid.\n\nStay Healthy!";
+                    string url = $"https://wa.me/91{console.CustomerPhone}?text={Uri.EscapeDataString(message)}";
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = url,
+                        UseShellExecute = true
+                    });
+                }
+                else
+                {
+                    // Trigger actual ESC/POS thermal printing
+                    ThermalPrinterService.PrintReceipt(console, invoiceNo);
+                }
+                
                 console.Clear();
                 StatusMessage = $"✓ Bill #{invoiceNo} saved! Console {console.ConsoleNumber} cleared.";
             }

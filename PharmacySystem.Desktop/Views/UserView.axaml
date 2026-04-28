@@ -41,6 +41,9 @@
                     <TextBlock Text="Role *" FontWeight="SemiBold" Margin="0,0,0,5"/>
                     <ComboBox ItemsSource="{Binding Roles}" SelectedItem="{Binding Role}" HorizontalAlignment="Stretch" Margin="0,0,0,15" />
 
+                    <TextBlock Text="Override PIN (For Cashier Voids)" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                    <TextBox Text="{Binding OverridePin}" Margin="0,0,0,15" MaxLength="4" />
+
                     <CheckBox IsChecked="{Binding IsActive}" Content="Is Active User" Margin="0,0,0,20" />
 
                     <Grid ColumnDefinitions="*,*">

@@ -20,19 +20,40 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <TextBlock Text="ClinicOS POS" FontSize="26" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,30" Foreground="#007ACC" />
+        <TextBlock Text="ClinicOS POS" FontSize="26" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,5" Foreground="#007ACC" />
+        <TextBlock Text="{Binding LicenseStatus}" FontSize="12" HorizontalAlignment="Center" Foreground="#64748B" Margin="0,0,0,20"/>
 
-        <TextBlock Grid.Row="1" Text="Username" Margin="0,0,0,5" FontWeight="SemiBold" />
-        <TextBox Grid.Row="2" Text="{Binding Username}" Margin="0,0,0,15" Height="35" Padding="5" FontSize="14" />
+        <!-- LOGIN FORM -->
+        <StackPanel Grid.Row="1" Grid.RowSpan="5" IsVisible="{Binding IsLoginVisible}">
+            <TextBlock Text="Username" Margin="0,0,0,5" FontWeight="SemiBold" />
+            <TextBox Text="{Binding Username}" Margin="0,0,0,15" Height="35" Padding="5" FontSize="14" />
 
-        <TextBlock Grid.Row="3" Text="Password" Margin="0,0,0,5" FontWeight="SemiBold" />
-        <TextBox Grid.Row="4" Text="{Binding Password}" PasswordChar="*" Margin="0,0,0,25" Height="35" Padding="5" FontSize="14" />
+            <TextBlock Text="Password" Margin="0,0,0,5" FontWeight="SemiBold" />
+            <TextBox Text="{Binding Password}" PasswordChar="*" Margin="0,0,0,25" Height="35" Padding="5" FontSize="14" />
 
-        <Button Grid.Row="5" Content="Login" Command="{Binding LoginCommand}" 
-                Height="40" Background="#007ACC" Foreground="White" FontWeight="Bold" FontSize="14"
-                VerticalAlignment="Top" BorderThickness="0" Cursor="Hand" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+            <Button Content="Login" Command="{Binding LoginCommand}" 
+                    Height="40" Background="#007ACC" Foreground="White" FontWeight="Bold" FontSize="14"
+                    Cursor="Hand" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+        </StackPanel>
+
+        <!-- LICENSE ACTIVATION FORM -->
+        <StackPanel Grid.Row="1" Grid.RowSpan="5" IsVisible="{Binding IsLicenseInputVisible}">
+            <Border Background="#FEF2F2" BorderBrush="#F87171" BorderThickness="1" Padding="10" Margin="0,0,0,15" CornerRadius="6">
+                <TextBlock Text="Your license has expired or is invalid. Please contact support to purchase a key." Foreground="#B91C1C" TextWrapping="Wrap" FontSize="12"/>
+            </Border>
+
+            <TextBlock Text="Your Hardware ID:" Margin="0,0,0,5" FontWeight="SemiBold" />
+            <TextBox Text="{Binding HardwareId}" IsReadOnly="True" Background="#F1F5F9" Margin="0,0,0,15" Height="35" Padding="5" FontSize="14" />
+
+            <TextBlock Text="License Key:" Margin="0,0,0,5" FontWeight="SemiBold" />
+            <TextBox Text="{Binding LicenseKeyInput}" Margin="0,0,0,25" Height="35" Padding="5" FontSize="14" Watermark="Paste your key here" />
+
+            <Button Content="Activate" Command="{Binding ActivateCommand}" 
+                    Height="40" Background="#10B981" Foreground="White" FontWeight="Bold" FontSize="14"
+                    Cursor="Hand" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+        </StackPanel>
 
         <TextBlock Grid.Row="5" Text="{Binding ErrorMessage}" Foreground="Red" FontWeight="Medium" 
-                   VerticalAlignment="Bottom" HorizontalAlignment="Center" TextWrapping="Wrap" />
+                   VerticalAlignment="Bottom" HorizontalAlignment="Center" TextWrapping="Wrap" Margin="0,15,0,0"/>
     </Grid>
 </Window>

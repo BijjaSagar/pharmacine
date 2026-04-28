@@ -4,11 +4,12 @@ namespace PharmacySystem.Desktop.Helpers
     {
         public static int UserId { get; set; }
         public static string Username { get; set; } = string.Empty;
-        public static string Role { get; set; } = string.Empty; // "Admin", "Manager", "Biller"
+        public static string Role { get; set; } = string.Empty; // "Owner", "Manager", "Cashier"
 
-        public static bool IsAdmin => Role == "Admin";
+        public static bool IsOwner => Role == "Owner";
         public static bool IsManager => Role == "Manager";
-        public static bool IsBiller => Role == "Biller";
+        public static bool IsCashier => Role == "Cashier";
+        public static bool IsOwnerOrManager => IsOwner || IsManager;
 
         public static void Clear()
         {

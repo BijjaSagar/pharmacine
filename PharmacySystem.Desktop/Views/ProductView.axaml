@@ -65,7 +65,12 @@
                     </StackPanel>
                 </Grid>
 
-                <CheckBox Content="Prescription Required" IsChecked="{Binding SelectedProduct.IsPrescriptionRequired}" Margin="0,0,0,10" />
+                <CheckBox Content="Prescription Required" IsChecked="{Binding SelectedProduct.IsPrescriptionRequired}" Margin="0,0,0,5" />
+                <CheckBox Content="Schedule H1" IsChecked="{Binding SelectedProduct.IsScheduleH1}" Margin="0,0,0,10" />
+
+                <TextBlock Text="Shelf Location" FontWeight="SemiBold" />
+                <TextBox Text="{Binding SelectedProduct.ShelfLocation}" Margin="0,5,0,10" Height="25" Watermark="e.g. Rack A2" />
+
                 <CheckBox Content="Is Active" IsChecked="{Binding SelectedProduct.IsActive}" Margin="0,0,0,20" />
 
                 <Grid>
@@ -92,6 +97,7 @@
                 <DataGridTextColumn Header="Price" Binding="{Binding UnitPrice, StringFormat={}{0:C}}" Width="80" />
                 <DataGridTextColumn Header="GST%" Binding="{Binding GstPercent}" Width="50" />
                 <DataGridTextColumn Header="Reorder" Binding="{Binding ReorderLevel}" Width="60" />
+                <DataGridTextColumn Header="Shelf" Binding="{Binding ShelfLocation}" Width="80" />
                 <DataGridCheckBoxColumn Header="Active" Binding="{Binding IsActive}" Width="50" />
             </DataGrid.Columns>
         </DataGrid>

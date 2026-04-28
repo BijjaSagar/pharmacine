@@ -13,6 +13,7 @@ namespace PharmacySystem.Desktop.Models
         public decimal GstPercent { get; set; }
         public bool IsPrescriptionRequired { get; set; }
         public bool IsScheduleH1 { get; set; }
+        public string ShelfLocation { get; set; } = "Store";
         public bool IsActive { get; set; } = true;
     }
 }
