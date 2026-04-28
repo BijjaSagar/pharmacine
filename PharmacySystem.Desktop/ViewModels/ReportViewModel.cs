@@ -133,14 +133,19 @@ namespace PharmacySystem.Desktop.ViewModels
         private async Task LoadGstReportAsync()
         {
             GstReport.Clear();
-            var sql = @"SELECT invoice_number, sale_date, 
-                        total_amount - total_gst AS taxable_amount, 
-                        total_gst AS gst_amount, 
-                        total_amount,
-                        CASE WHEN customer_phone IS NOT NULL AND customer_phone <> '' THEN 'B2C' ELSE 'B2C' END AS type
-                        FROM sales
-                        WHERE sale_date >= @start AND sale_date <= @end
-                        ORDER BY sale_date DESC";
+            var sql = @"SELECT s.invoice_number, s.sale_date, 
+                        s.total_amount - s.total_gst AS taxable_amount, 
+                        s.total_gst AS gst_amount, 
+                        s.total_amount,
+                        STRING_AGG(DISTINCT COALESCE(p.hsn_code, '3004'), ', ') as hsn_codes,
+                        CASE WHEN s.customer_phone IS NOT NULL AND s.customer_phone <> '' THEN 'B2C' ELSE 'B2C' END AS type
+                        FROM sales s
+                        LEFT JOIN sale_items si ON s.sale_id = si.sale_id
+                        LEFT JOIN batches b ON si.batch_id = b.batch_id
+                        LEFT JOIN products p ON b.product_id = p.product_id
+                        WHERE s.sale_date >= @start AND s.sale_date <= @end
+                        GROUP BY s.sale_id, s.invoice_number, s.sale_date, s.total_amount, s.total_gst, s.customer_phone
+                        ORDER BY s.sale_date DESC";
             
             var dt = await _dbService.ExecuteQueryAsync(sql, 
                 new Npgsql.NpgsqlParameter("@start", StartDate.DateTime.Date),
@@ -152,6 +157,7 @@ namespace PharmacySystem.Desktop.ViewModels
                 {
                     InvoiceNo = row["invoice_number"].ToString() ?? "",
                     SaleDate = Convert.ToDateTime(row["sale_date"]),
+                    HSNCode = row["hsn_codes"].ToString() ?? "3004",
                     TaxableAmount = Convert.ToDecimal(row["taxable_amount"]),
                     GstAmount = Convert.ToDecimal(row["gst_amount"]),
                     TotalAmount = Convert.ToDecimal(row["total_amount"]),
@@ -165,7 +171,8 @@ namespace PharmacySystem.Desktop.ViewModels
             if (string.IsNullOrEmpty(type)) return;
 
             string fileName = $"Export_{type}_{DateTime.Now:yyyyMMddHHmmss}.csv";
-            string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, fileName);
+            string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+            string path = Path.Combine(desktopPath, fileName);
             
             StringBuilder sb = new StringBuilder();
 
@@ -185,9 +192,9 @@ namespace PharmacySystem.Desktop.ViewModels
                 }
                 else if (type == "GST")
                 {
-                    sb.AppendLine("Invoice No,Sale Date,Taxable Amount,GST Amount,Total Amount,Type");
+                    sb.AppendLine("Invoice No,Sale Date,HSN Code,Taxable Amount,CGST,SGST,Total Amount,Type");
                     foreach (var item in GstReport)
-                        sb.AppendLine($"{item.InvoiceNo},{item.SaleDate:d},{item.TaxableAmount},{item.GstAmount},{item.TotalAmount},{item.Type}");
+                        sb.AppendLine($"{item.InvoiceNo},{item.SaleDate:d},\"{item.HSNCode}\",{item.TaxableAmount},{item.CGST:F2},{item.SGST:F2},{item.TotalAmount},{item.Type}");
                 }
 
                 await File.WriteAllTextAsync(path, sb.ToString());

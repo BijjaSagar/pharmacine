@@ -98,6 +98,7 @@ namespace PharmacySystem.Desktop.ViewModels
         public ICommand Set15DaysCommand { get; }
         public ICommand Set30DaysCommand { get; }
         public ICommand Set60DaysCommand { get; }
+        public ICommand GeneratePoCommand { get; }
 
         public InventoryAlertViewModel()
         {
@@ -106,6 +107,7 @@ namespace PharmacySystem.Desktop.ViewModels
             Set15DaysCommand  = new RelayCommand(_ => ExpiryDays = 15);
             Set30DaysCommand  = new RelayCommand(_ => ExpiryDays = 30);
             Set60DaysCommand  = new RelayCommand(_ => ExpiryDays = 60);
+            GeneratePoCommand = new RelayCommand(async _ => await GeneratePurchaseOrderAsync());
             _ = LoadAllAsync();
         }
 
@@ -278,6 +280,56 @@ namespace PharmacySystem.Desktop.ViewModels
                 DeadStockCount = DeadStockItems.Count;
             }
             catch (Exception ex) { System.Console.WriteLine("DeadStock Error: " + ex.Message); }
+        }
+
+        // ── 4. Generate Purchase Order ─────────────────────────────────────
+        private async Task GeneratePurchaseOrderAsync()
+        {
+            IsBusy = true;
+            try
+            {
+                var poList = new System.Collections.Generic.List<StockAlertItem>();
+                poList.AddRange(OutOfStockItems);
+                poList.AddRange(LowStockItems);
+
+                if (poList.Count == 0)
+                {
+                    LastRefreshed = "Nothing to reorder.";
+                    return;
+                }
+
+                // Group by supplier
+                var grouped = System.Linq.Enumerable.GroupBy(poList, x => string.IsNullOrWhiteSpace(x.Supplier) ? "Unknown Supplier" : x.Supplier);
+
+                string path = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), $"PurchaseOrder_{DateTime.Now:yyyyMMdd}.txt");
+                using var sw = new System.IO.StreamWriter(path);
+                
+                sw.WriteLine($"CLINICOS PHARMACY - PURCHASE ORDER");
+                sw.WriteLine($"Generated: {DateTime.Now:f}");
+                sw.WriteLine(new string('=', 50));
+                
+                foreach (var group in grouped)
+                {
+                    sw.WriteLine($"\nSUPPLIER: {group.Key.ToUpper()}");
+                    sw.WriteLine(new string('-', 50));
+                    sw.WriteLine($"{"MEDICINE",-30} {"STOCK",8} {"REORDER",8}");
+                    
+                    foreach (var item in group)
+                    {
+                        sw.WriteLine($"{item.MedicineName,-30} {item.StockQty,8:N0} {item.ReorderLevel,8:N0}");
+                    }
+                }
+                
+                LastRefreshed = $"PO saved to Desktop!";
+            }
+            catch (Exception ex)
+            {
+                System.Console.WriteLine("Generate PO Error: " + ex.Message);
+            }
+            finally
+            {
+                IsBusy = false;
+            }
         }
     }
 }

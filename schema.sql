@@ -47,6 +47,7 @@ CREATE TABLE products (
     generic_name VARCHAR(200),
     category_id INT REFERENCES categories(category_id),
     pack_size VARCHAR(50),
+    hsn_code VARCHAR(50) DEFAULT '3004',
     reorder_level INT DEFAULT 0,
     unit_price DECIMAL(10,2) NOT NULL,
     gst_percent DECIMAL(5,2) DEFAULT 5.0,

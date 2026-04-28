@@ -57,7 +57,7 @@ namespace PharmacySystem.Desktop.ViewModels
             set => SetProperty(ref _reason, value);
         }
         
-        public ObservableCollection<string> Reasons { get; } = new() { "Breakage", "Expiry", "Audit Correction" };
+        public ObservableCollection<string> Reasons { get; } = new() { "Breakage", "Audit Correction", "Destroyed (Expired)", "Returned to Supplier" };
 
         private string _errorMessage = string.Empty;
         public string ErrorMessage
@@ -94,9 +94,9 @@ namespace PharmacySystem.Desktop.ViewModels
                 var sql = @"SELECT b.batch_id, p.name, b.batch_number, b.quantity, b.expiry_date
                             FROM batches b
                             JOIN products p ON b.product_id = p.product_id
-                            WHERE p.barcode = @bc";
+                            WHERE p.barcode ILIKE @bc OR p.name ILIKE @bc OR b.batch_number ILIKE @bc";
                             
-                var dt = await _dbService.ExecuteQueryAsync(sql, new NpgsqlParameter("@bc", BarcodeInput));
+                var dt = await _dbService.ExecuteQueryAsync(sql, new NpgsqlParameter("@bc", $"%{BarcodeInput}%"));
 
                 foreach (System.Data.DataRow row in dt.Rows)
                 {
@@ -150,7 +150,7 @@ namespace PharmacySystem.Desktop.ViewModels
                     new NpgsqlParameter("@qty", NewQuantity),
                     new NpgsqlParameter("@bid", SelectedBatch.BatchId));
 
-                System.Windows.MessageBox.Show("Stock adjusted successfully!", "Success");
+                System.Console.WriteLine($"Stock adjusted successfully: {SelectedBatch.ProductName} -> {NewQuantity} ({Reason})");
                 SelectedBatch.CurrentQuantity = NewQuantity;
                 ErrorMessage = string.Empty;
                 Batches.Clear();

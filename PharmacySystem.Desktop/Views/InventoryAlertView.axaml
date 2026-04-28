@@ -280,10 +280,15 @@
 
         <!-- ══ BOTTOM BAR ══════════════════════════════════════════════ -->
         <Border Grid.Row="3" Background="#1E293B" Padding="20,10" Margin="0,12,0,0">
-            <Grid ColumnDefinitions="*,Auto">
+            <Grid ColumnDefinitions="*,Auto,Auto">
                 <TextBlock Text="💡  Tip: Sell expiring stock first via POS → search by generic name to find alternatives"
                            Foreground="#94A3B8" FontSize="12" VerticalAlignment="Center"/>
-                <Button Grid.Column="1" Command="{Binding RefreshCommand}"
+                <Button Grid.Column="1" Command="{Binding GeneratePoCommand}"
+                        Background="#10B981" Foreground="White"
+                        FontSize="13" FontWeight="Bold" Padding="20,10" Margin="0,0,10,0" CornerRadius="6" Cursor="Hand">
+                    📦  Generate PO (PDF/TXT)
+                </Button>
+                <Button Grid.Column="2" Command="{Binding RefreshCommand}"
                         Background="#3B82F6" Foreground="White"
                         FontSize="13" FontWeight="Bold" Padding="20,10" CornerRadius="6" Cursor="Hand">
                     🔄  Refresh Now

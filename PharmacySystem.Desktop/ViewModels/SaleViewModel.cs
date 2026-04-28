@@ -324,6 +324,34 @@ namespace PharmacySystem.Desktop.ViewModels
                     GstPercent = row["gst_percent"] != DBNull.Value ? Convert.ToDecimal(row["gst_percent"]) : 0
                 };
 
+                // ── 2. FIFO ENFORCEMENT ──────────────────────────────────────────
+                if (SelectedSearchResult.BatchId > 0 && SelectedSearchResult.ExpiryDate < DateTime.MaxValue)
+                {
+                    string fifoSql = @"
+                        SELECT batch_number, expiry_date 
+                        FROM batches 
+                        WHERE product_id = @pid 
+                          AND quantity > 0 
+                          AND expiry_date >= CURRENT_DATE 
+                          AND expiry_date < @exp 
+                          AND batch_id != @bid 
+                        ORDER BY expiry_date ASC 
+                        LIMIT 1";
+
+                    var olderDt = await _dbService.ExecuteQueryAsync(fifoSql,
+                        new NpgsqlParameter("@pid", product.ProductId),
+                        new NpgsqlParameter("@exp", SelectedSearchResult.ExpiryDate),
+                        new NpgsqlParameter("@bid", SelectedSearchResult.BatchId));
+
+                    if (olderDt.Rows.Count > 0)
+                    {
+                        var olderBatch = olderDt.Rows[0]["batch_number"].ToString();
+                        StatusMessage = $"🚨 FIFO ALERT: Older batch ({olderBatch}) exists in stock! Sell that first.";
+                        return; // Block adding to cart
+                    }
+                }
+
+
                 var sr = SelectedSearchResult;
                 var existing = ActiveConsole.CartItems
                     .FirstOrDefault(c => c.Product.ProductId == product.ProductId && c.BatchId == sr.BatchId);
@@ -414,7 +442,8 @@ namespace PharmacySystem.Desktop.ViewModels
                     }
                 }
 
-                PrintReceipt(console, invoiceNo);
+                // Trigger actual ESC/POS thermal printing
+                ThermalPrinterService.PrintReceipt(console, invoiceNo);
                 console.Clear();
                 StatusMessage = $"✓ Bill #{invoiceNo} saved! Console {console.ConsoleNumber} cleared.";
             }
@@ -428,13 +457,5 @@ namespace PharmacySystem.Desktop.ViewModels
             }
         }
 
-        private void PrintReceipt(ConsoleState console, string invoiceNo)
-        {
-            Console.WriteLine($"=== PHARMACY RECEIPT === Console {console.ConsoleNumber}");
-            Console.WriteLine($"Invoice: {invoiceNo}");
-            Console.WriteLine($"Customer: {console.CustomerName}  |  Dr: {console.DoctorName}");
-            Console.WriteLine($"Total: ₹{console.GrandTotal:F2}");
-            Console.WriteLine("========================");
-        }
     }
 }
